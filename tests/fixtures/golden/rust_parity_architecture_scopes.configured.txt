@@ -1,0 +1,3 @@
+modules: 22, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 11, "governed": 5, "unclassified": 6, "uncovered": 0} complete=False
+ARC011 src/app/features/billing/stray.py:None:None error member=. billing contains module stray.py, which is in no layer (domain, application)

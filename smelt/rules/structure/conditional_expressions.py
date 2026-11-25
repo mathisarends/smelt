@@ -1,15 +1,6 @@
-from __future__ import annotations
-
-import ast
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import tree_nodes
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class NestedConditionalExpression(Rule):
@@ -52,33 +43,3 @@ class NestedConditionalExpression(Rule):
         ),
         config=("rules", "style.overrides"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            tree = ctx.asts.parse(source.path)
-            expressions = [
-                node for node in tree_nodes(tree) if isinstance(node, ast.IfExp)
-            ]
-            nested = {
-                branch
-                for node in expressions
-                for branch in (node.body, node.orelse)
-                if isinstance(branch, ast.IfExp)
-            }
-            for node in expressions:
-                if node in nested or not any(
-                    isinstance(branch, ast.IfExp) for branch in (node.body, node.orelse)
-                ):
-                    continue
-                yield self.violation(
-                    "This conditional expression contains multiple decision branches; "
-                    "use explicit if/elif or match statements",
-                    path=source.path,
-                    line=node.lineno,
-                    column=node.col_offset + 1,
-                    end_line=node.end_lineno,
-                    end_column=(node.end_col_offset or 0) + 1,
-                    source_module=source.module,
-                    expected={"automatic_rewrite": False},
-                    hint="Preserve lazy branch evaluation and branch order in the statements.",
-                )

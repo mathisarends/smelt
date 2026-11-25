@@ -7,11 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
-- `smelt check` analyzes in the compiled native core by default, including
-  `--staged` and `--changed`. Reports match the Python engine's. The core parses
+- `smelt check` analyzes in the compiled native core, including `--staged`
+  and `--changed`. Reports match the earlier Python analysis. The core parses
   the newest Python grammar whichever Python runs smelt, so a syntax error no
-  longer suggests running smelt on a newer Python. `SMELT_CORE=python` selects
-  the Python engine for comparison until it is removed.
+  longer suggests running smelt on a newer Python.
 - Checks keep no cache. Every run analyzes the current working tree or staged
   index, so a result never depends on an earlier run, and smelt no longer
   writes a `.smelt_cache/` directory; an existing one can be deleted.

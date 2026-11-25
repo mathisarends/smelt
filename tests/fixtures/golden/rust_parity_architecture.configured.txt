@@ -1,0 +1,8 @@
+modules: 126, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 24, "governed": 38, "unclassified": 64, "uncovered": 0} complete=False
+ARC011 shop/features/billing/root_helper.py:None:None error billing contains module root_helper.py, which is in no layer (domain, application, infra, alpha, beta, platform)
+ARC011 shop/features/catalog/nested/loose.py:None:None error catalog contains module loose.py, which is in no layer (domain, application, infra, alpha, beta, platform)
+ARC011 shop/features/catalog/nested/other/__init__.py:None:None error catalog contains package other, which is not a declared layer (domain, application, infra, alpha, beta, platform)
+ARC011 shop/features/orders/_hidden/__init__.py:None:None error orders contains package _hidden, which is not a declared layer (domain, application, infra, alpha, beta, platform)
+ARC011 shop/features/orders/loose.py:None:None error orders contains module loose.py, which is in no layer (domain, application, infra, alpha, beta, platform)
+ARC011 shop/features/orders/models/__init__.py:None:None error orders contains package models, which is not a declared layer (domain, application, infra, alpha, beta, platform)

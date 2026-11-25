@@ -1,17 +1,9 @@
 from __future__ import annotations
 
-import ast
-from collections import Counter
-from typing import TYPE_CHECKING
-
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.config.patterns import path_matches
-from smelt.diagnostics.violation import Category, Violation
+from smelt.diagnostics.violation import Category
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class ForbiddenTestMock(Rule):
@@ -31,27 +23,6 @@ class ForbiddenTestMock(Rule):
         config=("tests.forbidden_mock_paths", "tests.quality_exclude"),
     )
 
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        patterns = ctx.config.tests.forbidden_mock_paths
-        for module in ctx.test_syntax.modules.values():
-            if not any(path_matches(pattern, module.path) for pattern in patterns):
-                continue
-            for call in module.calls:
-                if call.mock:
-                    yield self.violation(
-                        f"mock operation {call.qualified} is forbidden in this test path",
-                        path=module.path,
-                        line=call.node.lineno,
-                        column=call.node.col_offset + 1,
-                        expected={
-                            "forbidden_mock_paths": patterns,
-                            "operation": call.qualified,
-                            "family": call.family,
-                            "provenance": call.provenance,
-                        },
-                        hint="Exercise the domain with real values and an injected fake instead of a mock.",
-                    )
-
 
 class StringPatchTarget(Rule):
     scope = "test"
@@ -68,23 +39,6 @@ class StringPatchTarget(Rule):
         canonical="Inject fakes or patch objects instead of string targets",
         config=("rules", "tests.quality_exclude"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for module in ctx.test_syntax.modules.values():
-            for call in module.calls:
-                if call.string_target:
-                    yield self.violation(
-                        "patch uses a literal string target",
-                        path=module.path,
-                        line=call.node.lineno,
-                        column=call.node.col_offset + 1,
-                        expected={
-                            "operation": call.qualified,
-                            "family": call.family,
-                            "provenance": call.provenance,
-                        },
-                        hint="Inject the collaborator, or review deliberate object-based boundary patching.",
-                    )
 
 
 class ExcessiveTestPatches(Rule):
@@ -112,38 +66,3 @@ class ExcessiveTestPatches(Rule):
         if maximum == 0:
             return "Do not patch in tests; inject fakes instead"
         return f"Use at most {maximum} patches per test; inject fakes instead"
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        maximum = ctx.config.max_patches_per_test
-        if maximum is None:
-            return
-        for module in ctx.test_syntax.modules.values():
-            for test in module.tests:
-                patches = [call for call in test.calls if call.patch]
-                if len(patches) > maximum:
-                    counts: Counter[str] = Counter()
-                    edges: list[str] = []
-                    for call in patches:
-                        shape = ast.dump(call.node, include_attributes=False)
-                        edges.append(f"{test.name}:{shape}#{counts[shape]}")
-                        counts[shape] += 1
-                    yield self.violation(
-                        f"{test.name} has {len(patches)} patch calls; maximum is {maximum}",
-                        path=module.path,
-                        line=test.node.lineno,
-                        expected={
-                            "test": test.name,
-                            "patch_edges": edges,
-                            "max_patches_per_test": maximum,
-                            "patches": [
-                                {
-                                    "line": call.node.lineno,
-                                    "operation": call.qualified,
-                                    "family": call.family,
-                                    "provenance": call.provenance,
-                                }
-                                for call in patches
-                            ],
-                        },
-                        hint="Exercise a smaller behavior or inject a fake instead of replacing internal collaborators.",
-                    )

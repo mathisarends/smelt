@@ -1,0 +1,16 @@
+modules: 15, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 6, "governed": 0, "unclassified": 9, "uncovered": 0} complete=False
+ARC013 shop/billing/__init___copy.py:None:None error shop/billing/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/cart.py:None:None error shop/cart.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/catalog/__init___copy.py:None:None error shop/catalog/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/checkout.py:None:None error shop/checkout.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/hidden/__init___copy.py:None:None error shop/hidden/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/ignored_caller.py:None:None error shop/ignored_caller.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/legacy/__init___copy.py:None:None error shop/legacy/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/orders/order.py:None:None error shop/orders/order.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/orders/order_copy.py:None:None error shop/orders/order_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+LAY009 shop/orders/order_copy.py:None:None hint module name "order_copy" repeats "order" from package "shop.orders"
+MOD009 shop/orders/order.py:1:1 warning Class Order is also defined in shop.orders.order_copy:1
+MOD009 shop/orders/order.py:5:1 warning Class Draft is also defined in shop.orders.order_copy:5
+MOD009 shop/orders/order_copy.py:1:1 warning Class Order is also defined in shop.orders.order:1
+MOD009 shop/orders/order_copy.py:5:1 warning Class Draft is also defined in shop.orders.order:5

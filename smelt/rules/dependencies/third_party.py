@@ -1,31 +1,7 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import is_stdlib
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.common import (
-    boundary_imports,
-    import_violation,
-    join,
-    matches_any,
-    skip_import,
-)
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-    from smelt.analysis.imports import ImportDetail
-    from smelt.config.models import ThirdPartyPolicy
-
-
-def _is_denied(policy: ThirdPartyPolicy, names: tuple[str, ...]) -> bool:
-    if policy.default == "allow":
-        return any(matches_any(name, policy.deny) for name in names)
-    return not all(matches_any(name, policy.allow) for name in names)
 
 
 class ThirdPartyDenied(Rule):
@@ -64,74 +40,4 @@ class ThirdPartyDenied(Rule):
             "architecture.import_graph.transitive",
             "architecture.import_graph.type_checking",
         ),
-    )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        model = ctx.model
-        reported: set[tuple[str, str]] = set()
-        for detail, chain in boundary_imports(ctx):
-            if (
-                not detail.external
-                or is_stdlib(detail.imported)
-                or skip_import(ctx, detail)
-            ):
-                continue
-            source = model.info(detail.importer)
-            if source is None or not source.in_grid or source.layer is None:
-                continue
-            policy = model.layers[source.layer].third_party
-            names = detail.names or (detail.imported,)
-            if not _is_denied(policy, names):
-                continue
-            key = (detail.importer, detail.imported)
-            if chain and key in reported:
-                continue
-            reported.add(key)
-            message = _message(source.layer, detail, policy)
-            if chain:
-                message += " (indirectly)"
-            yield import_violation(
-                self,
-                ctx,
-                detail,
-                message=message,
-                expected=_expected(policy),
-                hint=_hint(ctx, detail, source.layer),
-                chain=chain,
-            )
-
-
-def _message(layer: str, detail: ImportDetail, policy: ThirdPartyPolicy) -> str:
-    package = detail.top_level
-    if policy.default == "deny":
-        allowed = join(policy.allow, "")
-        suffix = (
-            f"{layer} allows only: {allowed}"
-            if allowed
-            else f"{layer} allows no third-party packages"
-        )
-        return f"{layer} must not import {package} ({suffix})"
-    return f"{layer} must not import {package} (denied: {join(policy.deny)})"
-
-
-def _expected(policy: ThirdPartyPolicy) -> dict[str, object]:
-    if policy.default == "deny":
-        return {"third_party": {"default": "deny", "allow": list(policy.allow)}}
-    return {"third_party": {"default": "allow", "deny": list(policy.deny)}}
-
-
-def _hint(ctx: AnalysisContext, detail: ImportDetail, layer: str) -> str:
-    names = detail.names or (detail.imported,)
-    welcoming = [
-        name
-        for name, config in ctx.model.layers.items()
-        if name != layer and not _is_denied(config.third_party, names)
-    ]
-    if welcoming:
-        return (
-            f"Keep {detail.top_level} in a layer that allows it ({join(welcoming)}) "
-            f"and let {layer} depend on an abstraction."
-        )
-    return (
-        f"No layer allows {detail.top_level}; add it to a layer's third_party policy."
     )

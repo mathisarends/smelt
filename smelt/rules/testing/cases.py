@@ -1,15 +1,6 @@
-from __future__ import annotations
-
-import ast
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.test_cases import independent_case_loops
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class IndependentTestCaseLoop(Rule):
@@ -30,20 +21,3 @@ class IndependentTestCaseLoop(Rule):
         ),
         config=("rules", "tests.quality_exclude"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for module in ctx.test_syntax.modules.values():
-            for test in module.tests:
-                for loop in independent_case_loops(test):
-                    yield self.violation(
-                        f"{test.name} repeats candidate independent cases in a literal loop",
-                        path=module.path,
-                        line=loop.lineno,
-                        expected={
-                            "test": test.name,
-                            "cases": len(loop.iter.elts)
-                            if isinstance(loop.iter, ast.List | ast.Tuple)
-                            else 0,
-                        },
-                        hint="Review parametrization with descriptive IDs; preserve stateful lifecycles.",
-                    )

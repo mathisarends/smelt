@@ -1,16 +1,8 @@
 from __future__ import annotations
 
-import ast
-from collections import Counter
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
-
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class ExcessPrivateDefinitions(Rule):
@@ -74,86 +66,3 @@ class ExcessPrivateDefinitions(Rule):
             f"Keep at most {limit} private definitions per module; "
             "move cohesive groups into their own module"
         )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            limit, _ = ctx.contracts.threshold(source.module, "max_private_definitions")
-            declarations = _declarations(ctx.asts.parse(source.path))
-            definitions = [item for item in declarations if item.kind != "constant"]
-            if len(definitions) <= limit:
-                continue
-            constants = [item for item in declarations if item.kind == "constant"]
-            counts = Counter(item.kind for item in definitions)
-            first = definitions[0].node
-            yield self.violation(
-                f"Module {source.module} contains {len(definitions)} private definitions "
-                f"(limit {limit}): {counts['class']} classes, {counts['function']} functions, "
-                f"{counts['type_alias']} type aliases; review its responsibilities",
-                path=source.path,
-                line=first.lineno,
-                column=first.col_offset + 1,
-                source_module=source.module,
-                expected={
-                    "max_private_definitions": limit,
-                    "count": len(definitions),
-                    "counts": {
-                        "classes": counts["class"],
-                        "functions": counts["function"],
-                        "type_aliases": counts["type_alias"],
-                    },
-                    "definitions": _locations(definitions),
-                    "constant_count": len(constants),
-                    "constants": _locations(constants),
-                    "definition_edges": [
-                        f"{item.kind}:{item.name}" for item in definitions
-                    ],
-                    "automatic_rewrite": False,
-                },
-                hint="Review cohesive models or processing steps for a separate module, including their constants and validators; preserve import direction and module visibility. A large cohesive implementation may be intentional.",
-            )
-
-
-@dataclass(frozen=True, slots=True)
-class _Definition:
-    name: str
-    kind: Literal["class", "function", "type_alias", "constant"]
-    node: ast.stmt | ast.Name
-
-
-def _declarations(tree: ast.Module) -> list[_Definition]:
-    declarations: dict[tuple[str, str], _Definition] = {}
-    for statement in tree.body:
-        for item in _statement_definitions(statement):
-            if item.name.startswith("_") and not (
-                item.name.startswith("__") and item.name.endswith("__")
-            ):
-                declarations.setdefault((item.kind, item.name), item)
-    return list(declarations.values())
-
-
-def _statement_definitions(statement: ast.stmt) -> Iterator[_Definition]:
-    match statement:
-        case ast.ClassDef(name=name):
-            yield _Definition(name, "class", statement)
-        case ast.FunctionDef(name=name) | ast.AsyncFunctionDef(name=name):
-            yield _Definition(name, "function", statement)
-        case ast.TypeAlias(name=ast.Name(id=name)):
-            yield _Definition(name, "type_alias", statement)
-        case ast.Assign(targets=targets) | ast.AnnAssign(target=targets) if (
-            statement.value is not None
-        ):
-            for target in targets if isinstance(targets, list) else [targets]:
-                if isinstance(target, ast.Name) and target.id.isupper():
-                    yield _Definition(target.id, "constant", target)
-
-
-def _locations(definitions: list[_Definition]) -> list[dict[str, str | int]]:
-    return [
-        {
-            "name": item.name,
-            "kind": item.kind,
-            "line": item.node.lineno,
-            "column": item.node.col_offset + 1,
-        }
-        for item in definitions
-    ]

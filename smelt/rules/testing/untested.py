@@ -1,38 +1,6 @@
-from __future__ import annotations
-
-import ast
-import fnmatch
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import tree_nodes
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.testing.location import mirror_path
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-
-def _is_stub(function: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-    """A body without behaviour: a docstring, ``...``, ``pass`` or a bare raise."""
-    for statement in function.body:
-        if isinstance(statement, ast.Pass | ast.Raise):
-            continue
-        if isinstance(statement, ast.Expr) and isinstance(
-            statement.value, ast.Constant
-        ):
-            continue
-        return False
-    return True
-
-
-def _has_behaviour(tree: ast.Module) -> bool:
-    """Whether the module defines a function or method with a real body."""
-    return any(
-        isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and not _is_stub(node)
-        for node in tree_nodes(tree)
-    )
 
 
 class MissingMirrorTest(Rule):
@@ -76,39 +44,3 @@ class MissingMirrorTest(Rule):
             "project.test_roots",
         ),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        if ctx.config.tests.layout != "mirror":
-            return
-        tests = ctx.files.tests
-        for module, source in sorted(ctx.files.sources.items()):
-            if source.is_package or module.rsplit(".", 1)[-1] == "__main__":
-                continue
-            expected = mirror_path(ctx, module)
-            if expected is None or expected in tests:
-                continue
-            if ctx.config.tests.mirror_suffixes and self._has_topic_test(ctx, module):
-                continue
-            syntax = ctx.syntax.for_path(source.path)
-            if syntax is None or not _has_behaviour(syntax.tree):
-                continue
-            info = ctx.model.info(module)
-            yield self.violation(
-                f"{module} has no test at its mirrored path {expected}",
-                path=source.path,
-                line=1,
-                feature=info.feature if info else None,
-                layer=info.layer if info else None,
-                expected={"test_path": expected},
-                hint=(
-                    f"Add {expected} with tests of the module's behaviour, or keep a "
-                    "reasoned suppression when other tests deliberately cover it."
-                ),
-            )
-
-    @staticmethod
-    def _has_topic_test(ctx: AnalysisContext, module: str) -> bool:
-        pattern = mirror_path(ctx, f"{module}_*")
-        return pattern is not None and any(
-            fnmatch.fnmatchcase(path, pattern) for path in ctx.files.tests
-        )

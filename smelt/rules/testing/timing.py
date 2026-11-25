@@ -1,14 +1,6 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.test_timing import unbounded_waits
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class UnboundedTestWait(Rule):
@@ -31,48 +23,3 @@ class UnboundedTestWait(Rule):
             "tests.quality_exclude",
         ),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for module in ctx.test_syntax.modules.values():
-            for test in module.tests:
-                for call in unbounded_waits(test, ctx.config.tests.timeout_helpers):
-                    yield self.violation(
-                        f"{test.name} has no recognized deadline for {call.qualified}",
-                        path=module.path,
-                        line=call.node.lineno,
-                        expected={
-                            "test": test.name,
-                            "kind": "unbounded-wait",
-                            "operation": call.qualified,
-                            "provenance": call.provenance,
-                            **(
-                                {
-                                    "operation_location": {
-                                        "line": call.node.lineno,
-                                        "column": call.node.col_offset + 1,
-                                    },
-                                    "helper": {
-                                        "name": call.helper,
-                                        "call_line": call.helper_call_line,
-                                        "definition_line": call.helper_line,
-                                        "call_lines": list(call.helper_call_lines),
-                                    },
-                                }
-                                if call.helper is not None
-                                else {}
-                            ),
-                        },
-                        hint="Bound this operation locally or review the independently enforced test deadline.",
-                    )
-                for node in test.clock_replacements:
-                    yield self.violation(
-                        f"{test.name} replaces the asyncio scheduler/deadline clock",
-                        path=module.path,
-                        line=node.lineno,
-                        expected={
-                            "test": test.name,
-                            "kind": "scheduler-clock",
-                            "operation": "asyncio.AbstractEventLoop.time",
-                        },
-                        hint="Review an independent real-time guard; deadlines using this clock can also freeze.",
-                    )

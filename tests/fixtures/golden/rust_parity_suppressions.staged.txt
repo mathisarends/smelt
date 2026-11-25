@@ -1,0 +1,49 @@
+modules: 6, suppressed: 22, in debt: 0
+coverage: {"excluded": 0, "facade": 1, "governed": 0, "unclassified": 5, "uncovered": 0} complete=False
+ARC013 audit/cases.py:None:None error audit/cases.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 audit/cases_copy.py:None:None error audit/cases_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 audit/ignored.py:None:None error audit/ignored.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 audit/unknown.py:None:None error audit/unknown.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 audit/unknown_copy.py:None:None error audit/unknown_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+MET001 audit/cases_copy.py:20:43 warning fix unused suppression (CPX005)
+MET001 audit/cases_copy.py:41:46 warning fix unused suppression (CPX003)
+MET001 audit/cases_copy.py:44:13 warning fix unused suppression (all codes)
+MET001 audit/cases_copy.py:46:19 warning fix unused suppression (all codes)
+MET001 audit/cases_copy.py:47:15 warning fix unused suppression (all codes)
+MET001 audit/cases_copy.py:49:1 warning fix unused suppression (all codes)
+MET001 audit/cases_copy.py:50:13 warning fix unused suppression (all codes)
+MET001 audit/cases_copy.py:51:12 warning fix unused suppression (all codes)
+MET001 audit/unknown_copy.py:10:16 warning fix unknown suppression identifiers (made-up-rule)
+MET001 audit/unknown_copy.py:3:11 warning fix unknown suppression identifiers (complexity/excess-positonal-parameters)
+MET001 audit/unknown_copy.py:4:14 warning fix unknown suppression identifiers (complexity/deep-object-navigation)
+MET001 audit/unknown_copy.py:5:13 warning fix unknown suppression identifiers (SMT325)
+MET001 audit/unknown_copy.py:6:13 warning fix unknown suppression identifiers (SMT901)
+MET001 audit/unknown_copy.py:7:17 warning fix unknown suppression identifiers (SMT999)
+MET001 audit/unknown_copy.py:8:13 warning fix unknown suppression identifiers (information-hiding)
+MET001 audit/unknown_copy.py:9:15 warning fix unknown suppression identifiers (XYZ123)
+MET001 audit/unknown_copy.py:9:15 warning fix unused suppression (CPX003)
+MET002 audit/cases_copy.py:24:44 error suppression without a reason
+MET002 audit/cases_copy.py:46:19 error suppression without a reason
+MET002 audit/unknown_copy.py:10:16 error suppression without a reason
+VIS001 audit/cases_copy.py:12:1 warning used_prefix is public, but has no observed use outside its module
+VIS001 audit/cases_copy.py:16:1 warning lower_case is public, but has no observed use outside its module
+VIS001 audit/cases_copy.py:20:1 warning partly_unused is public, but has no observed use outside its module
+VIS001 audit/cases_copy.py:24:1 warning without_reason is public, but has no observed use outside its module
+VIS001 audit/cases_copy.py:32:1 warning spanning is public, but has no observed use outside its module
+VIS001 audit/cases_copy.py:40:1 warning nested is public, but has no observed use outside its module
+VIS001 audit/cases_copy.py:4:1 warning used_code is public, but has no observed use outside its module
+VIS001 audit/cases_copy.py:8:1 warning used_name is public, but has no observed use outside its module
+VIS002 audit/cases_copy.py:44:1 warning UNUSED is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/cases_copy.py:46:1 warning EMPTY_REASON is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/cases_copy.py:47:1 warning INACTIVE is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/cases_copy.py:48:1 warning TEXT is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/cases_copy.py:50:1 warning NÄME is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/cases_copy.py:51:1 warning MIXED is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/unknown_copy.py:10:1 warning NAME_ONLY is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/unknown_copy.py:3:1 warning TYPO is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/unknown_copy.py:4:1 warning RETIRED is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/unknown_copy.py:5:1 warning MERGED is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/unknown_copy.py:6:1 warning LEGACY is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/unknown_copy.py:7:1 warning OLD_FAMILY is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/unknown_copy.py:8:1 warning HIDING is public, but has no observed use outside its module or public-signature evidence
+VIS002 audit/unknown_copy.py:9:1 warning NONSENSE is public, but has no observed use outside its module or public-signature evidence

@@ -1,0 +1,14 @@
+modules: 13, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 5, "governed": 0, "unclassified": 8, "uncovered": 0} complete=False
+ARC009 packages/core/src/core/model.py:4:26 error member=packages/core member packages/core must not depend on services/api
+ARC009 packages/core/src/core/model_copy.py:4:26 error member=packages/core member packages/core must not depend on services/api
+ARC009 packages/tools/src/tools/helpers_copy.py:1:24 error member=packages/tools member packages/tools must not depend on packages/core
+ARC009 services/admin/src/admin/panel.py:2:22 error member=services/admin member services/admin must not depend on services/api
+ARC010 packages/core/src/core/model.py:4:26 error member=packages/core member packages/core imports services/api without a declared dependency on web-api
+ARC010 packages/core/src/core/model_copy.py:4:26 error member=packages/core member packages/core imports services/api without a declared dependency on web-api
+ARC010 services/admin/src/admin/panel.py:2:22 error member=services/admin member services/admin imports services/api without a declared dependency on web-api
+MOD009 packages/core/src/core/model.py:7:1 warning member=packages/core Class Order is also defined in core.model_copy:7
+MOD009 packages/core/src/core/model_copy.py:7:1 warning member=packages/core Class Order is also defined in core.model:7
+VIS001 libs/shared/src/shared/text_copy.py:4:1 warning member=libs/shared slug is public, but has no observed use outside its module
+VIS001 packages/tools/src/tools/helpers.py:4:1 warning member=packages/tools helper is public, but has no observed use outside its module
+VIS001 packages/tools/src/tools/helpers_copy.py:4:1 warning member=packages/tools helper is public, but has no observed use outside its module

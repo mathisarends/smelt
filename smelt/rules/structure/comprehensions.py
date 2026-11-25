@@ -1,20 +1,8 @@
 from __future__ import annotations
 
-import ast
-import hashlib
-from typing import TYPE_CHECKING
-
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import child_nodes, tree_nodes
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-type _Comprehension = ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp
-
-_MAX_FILTER_OPERANDS = 2
 
 
 class ComplexComprehension(Rule):
@@ -58,66 +46,3 @@ class ComplexComprehension(Rule):
             f"Use at most {limit} {noun} and one simple filter per comprehension; "
             "write a loop or name the per-item decision otherwise"
         )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            limit, _ = ctx.contracts.threshold(source.module, "max_comprehension_loops")
-            for node in _outermost(ctx.asts.parse(source.path)):
-                reasons = _reasons(node, limit)
-                if not reasons:
-                    continue
-                yield self.violation(
-                    "Complex comprehension: " + "; ".join(reasons),
-                    path=source.path,
-                    line=node.lineno,
-                    column=node.col_offset + 1,
-                    end_line=node.end_lineno,
-                    end_column=(node.end_col_offset or 0) + 1,
-                    source_module=source.module,
-                    expected={
-                        "max_comprehension_loops": limit,
-                        "conditions": reasons,
-                        "comprehension_edges": [
-                            hashlib.sha256(ast.dump(node).encode()).hexdigest()
-                        ],
-                        "automatic_rewrite": False,
-                    },
-                    hint="Name the per-item step or use a loop; preserve lazy evaluation and iteration order.",
-                )
-
-
-def _outermost(node: ast.AST) -> Iterator[_Comprehension]:
-    if isinstance(node, ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp):
-        yield node
-        return
-    for child in child_nodes(node):
-        yield from _outermost(child)
-
-
-def _reasons(root: _Comprehension, limit: int) -> list[str]:
-    reasons: set[str] = set()
-    for node in tree_nodes(root):
-        if not isinstance(
-            node, ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp
-        ):
-            continue
-        if len(node.generators) > limit:
-            reasons.add("too many for clauses")
-        element = node.value if isinstance(node, ast.DictComp) else node.elt
-        if isinstance(element, ast.IfExp) and not all(
-            isinstance(branch, ast.Name | ast.Attribute | ast.Constant)
-            for branch in (element.body, element.orelse)
-        ):
-            reasons.add("nontrivial conditional element")
-        if any(
-            len(generator.ifs) > 1
-            or any(
-                isinstance(expression, ast.BoolOp)
-                and len(expression.values) > _MAX_FILTER_OPERANDS
-                for condition in generator.ifs
-                for expression in tree_nodes(condition)
-            )
-            for generator in node.generators
-        ):
-            reasons.add("multiple or compound filters")
-    return sorted(reasons)

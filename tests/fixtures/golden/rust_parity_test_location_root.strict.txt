@@ -1,0 +1,38 @@
+modules: 23, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 10, "governed": 0, "unclassified": 13, "uncovered": 0} complete=False
+ARC013 src/app/billing/invoice.py:None:None error src/app/billing/invoice.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/app/billing/payment.py:None:None error src/app/billing/payment.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/app/billing/stripe/client.py:None:None error src/app/billing/stripe/client.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/app/errors.py:None:None error src/app/errors.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/app/health/presentation/router.py:None:None error src/app/health/presentation/router.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/app/memory.py:None:None error src/app/memory.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/app/orders/repository.py:None:None error src/app/orders/repository.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/app/orders/service.py:None:None error src/app/orders/service.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/app/other/service.py:None:None error src/app/other/service.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/app/session/infrastructure/repository.py:None:None error src/app/session/infrastructure/repository.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/lib/tests/lib/test_missing.py:None:None error src/lib/tests/lib/test_missing.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/lib/tests/lib/test_tools.py:None:None error src/lib/tests/lib/test_tools.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/lib/tools.py:None:None error src/lib/tools.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+IMP004 tests/app/billing/test_invoice.py:1:1 hint fix import these names from the existing app.billing package API
+IMP004 tests/app/billing/test_invoice_rounding.py:1:1 hint fix import these names from the existing app.billing package API
+LAY009 src/lib/tests/lib/test_missing.py:None:None hint module name "test_missing" repeats "test" from package "lib.tests"
+LAY009 src/lib/tests/lib/test_tools.py:None:None hint module name "test_tools" repeats "test" from package "lib.tests"
+TST001 tests/billing/test_payment.py:None:None error test_payment.py belongs in tests/app/billing/
+TST001 tests/lib/test_tool.py:None:None error test_tool.py has no source module at its mirrored path src/lib/tool.py (did you mean "tools.py"?)
+TST001 tests/other/test_service.py:None:None error test_service.py belongs in tests/app/other/
+TST012 src/app/billing/payment.py:1:None warning app.billing.payment has no test at its mirrored path tests/app/billing/test_payment.py
+TST012 src/app/billing/stripe/client.py:1:None warning app.billing.stripe.client has no test at its mirrored path tests/app/billing/stripe/test_client.py
+TST012 src/app/health/presentation/router.py:1:None warning app.health.presentation.router has no test at its mirrored path tests/app/health/presentation/test_router.py
+TST012 src/app/orders/repository.py:1:None warning app.orders.repository has no test at its mirrored path tests/app/orders/test_repository.py
+TST012 src/app/orders/service.py:1:None warning app.orders.service has no test at its mirrored path tests/app/orders/test_service.py
+TST012 src/app/other/service.py:1:None warning app.other.service has no test at its mirrored path tests/app/other/test_service.py
+TST012 src/app/session/infrastructure/repository.py:1:None warning app.session.infrastructure.repository has no test at its mirrored path tests/app/session/infrastructure/test_repository.py
+TST012 src/lib/tools.py:1:None warning lib.tools has no test at its mirrored path tests/lib/test_tools.py
+VIS001 src/app/billing/stripe/client.py:1:1 warning charge is public, but has no observed use outside its module
+VIS001 src/app/health/presentation/router.py:1:1 warning route is public, but has no observed use outside its module
+VIS001 src/app/orders/repository.py:1:1 warning save is public, but has no observed use outside its module
+VIS001 src/app/orders/service.py:1:1 warning place is public, but has no observed use outside its module
+VIS001 src/app/session/infrastructure/repository.py:1:1 warning load is public, but has no observed use outside its module
+VIS009 src/app/billing/payment.py:1:None warning app.billing.payment.pay is public; unused outside tests among analyzed modules
+VIS009 src/app/memory.py:1:None warning app.memory.remember is public; unused outside tests among analyzed modules
+VIS009 src/app/other/service.py:1:None warning app.other.service.other is public; unused outside tests among analyzed modules

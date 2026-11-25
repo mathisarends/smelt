@@ -1,0 +1,1 @@
+error: {'kind': 'config', 'message': 'invalid configuration in smelt.yml', 'input': None, 'config': {'file': 'smelt.yml', 'issues': [{'location': 'architecture.composition_root[0]', 'message': 'module "app.main" does not exist'}]}}

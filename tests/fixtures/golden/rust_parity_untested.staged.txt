@@ -1,0 +1,31 @@
+modules: 15, suppressed: 2, in debt: 0
+coverage: {"excluded": 0, "facade": 0, "governed": 3, "unclassified": 12, "uncovered": 0} complete=False
+ARC013 shop/__init__.py:None:None error shop/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/__main__.py:None:None error shop/__main__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/__main___copy.py:None:None error shop/__main___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/formatted.py:None:None error shop/formatted.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/method.py:None:None error shop/method.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/method_copy.py:None:None error shop/method_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/stubs.py:None:None error shop/stubs.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/suppressed.py:None:None error shop/suppressed.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/suppressed_copy.py:None:None error shop/suppressed_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/topical.py:None:None error shop/topical.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/untested.py:None:None error shop/untested.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/untested_copy.py:None:None error shop/untested_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+IDM003 shop/method_copy.py:1:1 hint review Service.run as __call__ with an operation-based class name
+MOD009 shop/method.py:1:1 warning Class Service is also defined in shop.method_copy:1
+MOD009 shop/method_copy.py:1:1 warning Class Service is also defined in shop.method:1
+TST001 tests/test_tested.py:None:None error test_tested.py has no source module at its mirrored path shop/tested.py
+TST001 tests/test_tested_copy.py:None:None error test_tested_copy.py has no source module at its mirrored path shop/tested_copy.py
+TST006 tests/test_tested_copy.py:1:None warning test_run has no recognized outcome assertion
+TST012 shop/__main___copy.py:1:None warning shop.__main___copy has no test at its mirrored path tests/test___main___copy.py
+TST012 shop/domain/order_copy.py:1:None warning shop.domain.order_copy has no test at its mirrored path tests/domain/test_order_copy.py
+TST012 shop/formatted.py:1:None warning shop.formatted has no test at its mirrored path tests/test_formatted.py
+TST012 shop/method_copy.py:1:None warning shop.method_copy has no test at its mirrored path tests/test_method_copy.py
+TST012 shop/topical.py:1:None warning shop.topical has no test at its mirrored path tests/test_topical.py
+TST012 shop/untested_copy.py:1:None warning shop.untested_copy has no test at its mirrored path tests/test_untested_copy.py
+VIS001 shop/__main___copy.py:1:1 warning main is public, but has no observed use outside its module
+VIS001 shop/domain/order_copy.py:1:1 warning total is public, but has no observed use outside its module
+VIS001 shop/method_copy.py:2:5 warning Service.run is public, but has no observed use outside its class
+VIS001 shop/suppressed_copy.py:2:1 warning run is public, but has no observed use outside its module
+VIS001 shop/untested_copy.py:1:1 warning run is public, but has no observed use outside its module

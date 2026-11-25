@@ -1,0 +1,43 @@
+modules: 9, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 0, "governed": 0, "unclassified": 9, "uncovered": 0} complete=False
+ARC013 app/__init__.py:None:None error app/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/_private_module.py:None:None error app/_private_module.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/_private_module_copy.py:None:None error app/_private_module_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/internal.py:None:None error app/internal.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/pkg/__init__.py:None:None error app/pkg/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/pkg/__init___copy.py:None:None error app/pkg/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/pkg/user.py:None:None error app/pkg/user.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/service.py:None:None error app/service.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/service_copy.py:None:None error app/service_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+IDM003 app/service_copy.py:19:1 hint review Images.retain as __call__ with an operation-based class name
+LAY004 app/service_copy.py:20:None error fix definitions in module.Images#0 have 1 avoidable ordering inversion(s)
+LAY004 app/service_copy.py:44:None error fix definitions in module.SessionLog#0 have 6 avoidable ordering inversion(s)
+LAY004 app/service_copy.py:6:None error fix definitions in module have 8 avoidable ordering inversion(s)
+MOD009 app/pkg/__init__.py:4:1 warning Class Local is also defined in app.pkg.__init___copy:4
+MOD009 app/pkg/__init___copy.py:4:1 warning Class Local is also defined in app.pkg:4
+MOD009 app/service.py:19:1 warning Class Images is also defined in app.service_copy:19
+MOD009 app/service.py:27:1 warning Class SessionLog is also defined in app.service_copy:27
+MOD009 app/service.py:64:1 warning Class Record is also defined in app.service_copy:64
+MOD009 app/service.py:70:1 warning Class Frozen is also defined in app.service_copy:70
+MOD009 app/service.py:79:1 warning Class Decorated is also defined in app.service_copy:79
+MOD009 app/service.py:83:1 warning Class Child is also defined in app.service_copy:83
+MOD009 app/service.py:87:1 warning Class Grandchild is also defined in app.service_copy:87
+MOD009 app/service.py:91:1 warning Class Mixed is also defined in app.service_copy:91
+MOD009 app/service.py:95:1 warning Class Twice is also defined in app.service_copy:95, app.service_copy:99
+MOD009 app/service.py:99:1 warning Class Twice is also defined in app.service_copy:95, app.service_copy:99
+MOD009 app/service_copy.py:19:1 warning Class Images is also defined in app.service:19
+MOD009 app/service_copy.py:27:1 warning Class SessionLog is also defined in app.service:27
+MOD009 app/service_copy.py:64:1 warning Class Record is also defined in app.service:64
+MOD009 app/service_copy.py:70:1 warning Class Frozen is also defined in app.service:70
+MOD009 app/service_copy.py:79:1 warning Class Decorated is also defined in app.service:79
+MOD009 app/service_copy.py:83:1 warning Class Child is also defined in app.service:83
+MOD009 app/service_copy.py:87:1 warning Class Grandchild is also defined in app.service:87
+MOD009 app/service_copy.py:91:1 warning Class Mixed is also defined in app.service:91
+MOD009 app/service_copy.py:95:1 warning Class Twice is also defined in app.service:95, app.service:99
+MOD009 app/service_copy.py:99:1 warning Class Twice is also defined in app.service:95, app.service:99
+TYP006 app/service_copy.py:30:22 hint fix 1 quoted annotation(s); an annotations future import defers them
+VIS001 app/service.py:15:1 warning public is public, but has no observed use outside its module
+VIS001 app/service_copy.py:15:1 warning public is public, but has no observed use outside its module
+VIS001 app/service_copy.py:74:1 warning decorate is public, but has no observed use outside its module
+VIS002 app/_private_module_copy.py:1:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS006 app/service_copy.py:23:5 hint retain only forwards to _retain

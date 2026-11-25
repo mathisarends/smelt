@@ -1,16 +1,9 @@
 from __future__ import annotations
 
-from collections import Counter
-from typing import TYPE_CHECKING
-
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.type_dispatch import type_dispatches
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class PreferMatchTypeDispatch(Rule):
@@ -46,51 +39,3 @@ class PreferMatchTypeDispatch(Rule):
             "Dispatch on one subject's type with match/case once an isinstance chain "
             f"reaches {policy.min_branches} branches"
         )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            contract = ctx.contracts.policy_for(source.module, "type_dispatch")
-            if (
-                contract is None
-                or contract.spec.type_dispatch is None
-                or contract.spec.type_dispatch.style != "match"
-            ):
-                continue
-            policy = contract.spec.type_dispatch
-            target = ctx.python_targets.for_path(source.absolute)
-            if target.minimum is not None and target.minimum < (3, 10):
-                continue
-            for candidate in type_dispatches(
-                ctx.asts.parse(source.path), policy.min_branches
-            ):
-                counts: Counter[str] = Counter()
-                edges: list[str] = []
-                for branch in candidate.branches:
-                    key = f"{candidate.scope}:{candidate.subject}:{branch.types}:{branch.guard}"
-                    edges.append(f"{key}#{counts[key]}")
-                    counts[key] += 1
-                yield self.violation(
-                    f"consider match {candidate.subject}: for {len(candidate.branches)} type-dispatch branches",
-                    path=source.path,
-                    line=candidate.node.lineno,
-                    column=candidate.node.col_offset + 1,
-                    source_module=source.module,
-                    expected={
-                        "contract": contract.name,
-                        "type_dispatch": policy.model_dump(mode="json"),
-                        "subject": candidate.subject,
-                        "scope": candidate.scope,
-                        "dispatch_edges": edges,
-                        "branches": [
-                            {
-                                "line": branch.line,
-                                "types": list(branch.types),
-                                "guard": branch.guard,
-                            }
-                            for branch in candidate.branches
-                        ],
-                        "python": target.to_json(),
-                        "automatic_rewrite": False,
-                    },
-                    hint=f"Review match {candidate.subject}: with class patterns and guards; preserve separate if statements and nested branch conditions.",
-                )

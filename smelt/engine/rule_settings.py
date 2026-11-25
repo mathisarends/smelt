@@ -313,14 +313,6 @@ class RuleSettings:
             return RuleStatus("needs policy")
         return RuleStatus("off")
 
-    def has_explicit_activation(self, code: str) -> bool:
-        """Whether a named setting anywhere can enable the rule."""
-        return self.has_package_activation(code) or any(
-            setting.enables
-            for layer in self._layers
-            if (setting := layer.get(code)) is not None
-        )
-
     def has_package_activation(self, code: str) -> bool:
         """Whether a package contract or workspace member enables the rule locally."""
         return any(
@@ -328,18 +320,6 @@ class RuleSettings:
             for settings in (*self._packages.values(), *self._members.values())
             if (setting := settings.get(code)) is not None
         )
-
-    def explicit_activation(
-        self, code: str, ctx: AnalysisContext, *, module: str, path: str
-    ) -> RuleSettingOrigin | None:
-        """The named setting enabling this target after precedence and disables."""
-        settings = tuple(self._target_settings(code, ctx, module=module, path=path))
-        for setting in reversed(settings):
-            if setting.value == "off":
-                return None
-            if setting.enables:
-                return RuleSettingOrigin(setting.location, setting.source)
-        return None
 
     def severity_for_path(
         self,

@@ -1,0 +1,430 @@
+modules: 126, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 24, "governed": 38, "unclassified": 64, "uncovered": 0} complete=False
+ARC001 shop/features/billing/application/charges.py:2:54 error application must not depend on infra (indirectly)
+ARC001 shop/features/billing/domain/invoice.py:1:47 error domain must not depend on application (indirectly)
+ARC001 shop/features/billing/domain/invoice.py:1:47 error domain must not depend on infra (indirectly)
+ARC001 shop/features/orders/application/service.py:5:44 error application must not depend on infra
+ARC001 shop/features/orders/domain/order.py:11:58 error domain must not depend on application
+ARC001 shop/features/orders/domain/order.py:11:58 error domain must not depend on infra (indirectly)
+ARC002 shop/features/billing/application/charges.py:2:54 error feature billing must not import feature orders (application -> infra)
+ARC002 shop/features/billing/application/charges.py:4:44 error feature billing must not import feature orders (application -> (feature root))
+ARC002 shop/features/billing/domain/invoice.py:1:47 error feature billing must not import feature orders (domain -> (feature root))
+ARC002 shop/features/billing/domain/invoice.py:1:47 error feature billing must not import feature orders (domain -> application)
+ARC002 shop/features/billing/domain/invoice.py:1:47 error feature billing must not import feature orders (domain -> domain)
+ARC002 shop/features/billing/domain/invoice.py:1:47 error feature billing must not import feature orders (domain -> domain)
+ARC002 shop/features/billing/domain/invoice.py:1:47 error feature billing must not import feature orders (domain -> infra)
+ARC002 shop/features/billing/infra/gateway.py:1:55 error feature billing must not import feature orders (infra -> (feature root))
+ARC002 shop/features/billing/infra/gateway.py:1:55 error feature billing must not import feature orders (infra -> application)
+ARC002 shop/features/billing/infra/gateway.py:1:55 error feature billing must not import feature orders (infra -> domain)
+ARC002 shop/features/billing/infra/gateway.py:1:55 error feature billing must not import feature orders (infra -> domain)
+ARC002 shop/features/billing/infra/gateway.py:2:44 error feature billing must not import feature orders (infra -> infra)
+ARC002 shop/features/billing/root_helper.py:1:47 error feature billing must not import feature orders ((feature root) -> (feature root))
+ARC002 shop/features/billing/root_helper.py:1:47 error feature billing must not import feature orders ((feature root) -> application)
+ARC002 shop/features/billing/root_helper.py:1:47 error feature billing must not import feature orders ((feature root) -> domain)
+ARC002 shop/features/billing/root_helper.py:1:47 error feature billing must not import feature orders ((feature root) -> domain)
+ARC002 shop/features/billing/root_helper.py:1:47 error feature billing must not import feature orders ((feature root) -> infra)
+ARC002 shop/features/orders/__init__.py:1:24 error feature orders must not import feature billing ((feature root) -> (feature root))
+ARC002 shop/features/orders/__init__.py:1:24 error feature orders must not import feature billing ((feature root) -> (feature root))
+ARC002 shop/features/orders/__init__.py:1:24 error feature orders must not import feature billing ((feature root) -> application)
+ARC002 shop/features/orders/__init__.py:1:24 error feature orders must not import feature billing ((feature root) -> domain)
+ARC002 shop/features/orders/__init__.py:1:24 error feature orders must not import feature billing ((feature root) -> infra)
+ARC002 shop/features/orders/application/service.py:2:50 error feature orders must not import feature billing (application -> (feature root))
+ARC002 shop/features/orders/application/service.py:3:49 error feature orders must not import feature billing (application -> application)
+ARC002 shop/features/orders/application/service.py:3:49 error feature orders must not import feature billing (application -> infra)
+ARC002 shop/features/orders/application/service.py:6:23 error feature orders must not import feature billing (application -> (feature root))
+ARC002 shop/features/orders/domain/order.py:11:58 error feature orders must not import feature billing (domain -> (feature root))
+ARC002 shop/features/orders/domain/order.py:11:58 error feature orders must not import feature billing (domain -> (feature root))
+ARC002 shop/features/orders/domain/order.py:11:58 error feature orders must not import feature billing (domain -> application)
+ARC002 shop/features/orders/domain/order.py:11:58 error feature orders must not import feature billing (domain -> domain)
+ARC002 shop/features/orders/domain/order.py:11:58 error feature orders must not import feature billing (domain -> infra)
+ARC002 shop/features/orders/infra/sql.py:2:49 error feature orders must not import feature billing (infra -> application)
+ARC002 shop/features/orders/infra/sql.py:2:49 error feature orders must not import feature billing (infra -> infra)
+ARC002 shop/features/orders/infra/sql.py:3:54 error feature orders must not import feature billing (infra -> (feature root))
+ARC002 shop/features/orders/infra/sql.py:3:54 error feature orders must not import feature billing (infra -> (feature root))
+ARC002 shop/features/orders/infra/sql.py:3:54 error feature orders must not import feature billing (infra -> domain)
+ARC003 shop/features/billing/application/charges.py:2:54 error application must not import sqlalchemy (denied: sqlalchemy) (indirectly)
+ARC003 shop/features/billing/domain/invoice.py:1:47 error domain must not import attrs (domain allows only: pydantic, attrs.validators) (indirectly)
+ARC003 shop/features/billing/domain/invoice.py:1:47 error domain must not import boto3 (domain allows only: pydantic, attrs.validators) (indirectly)
+ARC003 shop/features/billing/domain/invoice.py:1:47 error domain must not import requests (domain allows only: pydantic, attrs.validators) (indirectly)
+ARC003 shop/features/billing/domain/invoice.py:1:47 error domain must not import sqlalchemy (domain allows only: pydantic, attrs.validators) (indirectly)
+ARC003 shop/features/orders/application/service.py:1:8 error application must not import sqlalchemy (denied: sqlalchemy)
+ARC003 shop/features/orders/domain/events.py:1:31 error domain must not import requests (domain allows only: pydantic, attrs.validators) (indirectly)
+ARC003 shop/features/orders/domain/events.py:1:31 error domain must not import sqlalchemy (domain allows only: pydantic, attrs.validators) (indirectly)
+ARC003 shop/features/orders/domain/order.py:10:12 error domain must not import boto3 (domain allows only: pydantic, attrs.validators)
+ARC003 shop/features/orders/domain/order.py:11:58 error domain must not import sqlalchemy (domain allows only: pydantic, attrs.validators) (indirectly)
+ARC003 shop/features/orders/domain/order.py:3:8 error domain must not import requests (domain allows only: pydantic, attrs.validators)
+ARC003 shop/features/orders/domain/order.py:5:6 error domain must not import attrs (domain allows only: pydantic, attrs.validators)
+ARC003 shop/platform/auth/__init__.py:1:20 error platform must not import attrs (platform allows no third-party packages) (indirectly)
+ARC003 shop/platform/auth/__init__.py:1:20 error platform must not import boto3 (platform allows no third-party packages) (indirectly)
+ARC003 shop/platform/auth/__init__.py:1:20 error platform must not import httpx (platform allows no third-party packages) (indirectly)
+ARC003 shop/platform/auth/__init__.py:1:20 error platform must not import pydantic (platform allows no third-party packages) (indirectly)
+ARC003 shop/platform/auth/__init__.py:1:20 error platform must not import requests (platform allows no third-party packages) (indirectly)
+ARC003 shop/platform/auth/__init__.py:1:20 error platform must not import sqlalchemy (platform allows no third-party packages) (indirectly)
+ARC003 shop/platform/auth/guard.py:1:8 error platform must not import httpx (platform allows no third-party packages)
+ARC003 shop/platform/auth/guard.py:2:54 error platform must not import sqlalchemy (platform allows no third-party packages) (indirectly)
+ARC003 shop/platform/auth/guard.py:3:47 error platform must not import attrs (platform allows no third-party packages) (indirectly)
+ARC003 shop/platform/auth/guard.py:3:47 error platform must not import boto3 (platform allows no third-party packages) (indirectly)
+ARC003 shop/platform/auth/guard.py:3:47 error platform must not import pydantic (platform allows no third-party packages) (indirectly)
+ARC003 shop/platform/auth/guard.py:3:47 error platform must not import requests (platform allows no third-party packages) (indirectly)
+ARC004 shop/features/billing/application/charges.py:2:54 error import cycle between features: billing -> orders -> billing
+ARC004 shop/features/catalog/alpha/first.py:1:54 error import cycle between concrete modules: shop.features.catalog.alpha.first -> shop.features.catalog.nested.beta.second -> shop.features.catalog.nested.beta.third -> shop.features.catalog.alpha.first (type checking only)
+ARC004 shop/features/catalog/alpha/first.py:1:54 error import cycle between layers: catalog.alpha -> catalog.beta -> catalog.alpha (type checking only)
+ARC004 shop/features/orders/domain/events.py:1:31 error import cycle between modules in shop: features -> shared -> features
+ARC004 shop/tools/left.py:1:15 error import cycle between concrete modules: shop.tools.left -> shop.tools.right -> shop.tools.left
+ARC004 shop/tools/left.py:1:15 error import cycle between modules in shop.tools: left -> right -> left
+ARC004 shop/tools/pkg_a/four.py:1:15 error import cycle between concrete modules: shop.tools.pkg_a.four -> shop.tools.pkg_a.one -> shop.tools.pkg_b.two -> shop.tools.pkg_b.three -> shop.tools.pkg_a.four
+ARC004 shop/tools/pkg_a/one.py:1:34 error import cycle between modules in shop.tools: pkg_a -> pkg_b -> pkg_a
+ARC004 shop/tools/ring_a.py:1:15 error import cycle between concrete modules: shop.tools.ring_a -> shop.tools.ring_b -> shop.tools.ring_c -> shop.tools.ring_a
+ARC004 shop/tools/ring_a.py:1:15 error import cycle between modules in shop.tools: ring_a -> ring_b -> ring_c -> ring_a
+ARC004 shop/tools/style/__init__.py:1:22 error import cycle between concrete modules: shop.tools.style -> shop.tools.style.sibling -> shop.tools.style
+ARC004 shop/tools/typed_left.py:2:15 error import cycle between modules in shop.tools: typed_left -> typed_right -> typed_left (type checking only)
+ARC004 shop/tools/typed_left.py:5:19 error import cycle between concrete modules: shop.tools.typed_left -> shop.tools.typed_third -> shop.tools.typed_left
+ARC005 shop/platform/auth/__init__.py:1:20 error central module shop.platform.auth must not import feature billing
+ARC005 shop/platform/auth/__init__.py:1:20 error central module shop.platform.auth must not import feature billing
+ARC005 shop/platform/auth/__init__.py:1:20 error central module shop.platform.auth must not import feature billing
+ARC005 shop/platform/auth/__init__.py:1:20 error central module shop.platform.auth must not import feature billing
+ARC005 shop/platform/auth/__init__.py:1:20 error central module shop.platform.auth must not import feature billing
+ARC005 shop/platform/auth/__init__.py:1:20 error central module shop.platform.auth must not import feature orders
+ARC005 shop/platform/auth/__init__.py:1:20 error central module shop.platform.auth must not import feature orders
+ARC005 shop/platform/auth/__init__.py:1:20 error central module shop.platform.auth must not import feature orders
+ARC005 shop/platform/auth/__init__.py:1:20 error central module shop.platform.auth must not import feature orders
+ARC005 shop/platform/auth/__init__.py:1:20 error central module shop.platform.auth must not import feature orders
+ARC005 shop/platform/auth/guard.py:2:54 error central module shop.platform.auth.guard must not import feature billing
+ARC005 shop/platform/auth/guard.py:2:54 error central module shop.platform.auth.guard must not import feature billing
+ARC005 shop/platform/auth/guard.py:2:54 error central module shop.platform.auth.guard must not import feature billing
+ARC005 shop/platform/auth/guard.py:2:54 error central module shop.platform.auth.guard must not import feature billing
+ARC005 shop/platform/auth/guard.py:2:54 error central module shop.platform.auth.guard must not import feature orders
+ARC005 shop/platform/auth/guard.py:2:54 error central module shop.platform.auth.guard must not import feature orders
+ARC005 shop/platform/auth/guard.py:3:47 error central module shop.platform.auth.guard must not import feature orders
+ARC005 shop/platform/auth/guard.py:3:47 error central module shop.platform.auth.guard must not import feature orders
+ARC005 shop/platform/auth/guard.py:4:23 error central module shop.platform.auth.guard must not import feature billing
+ARC005 shop/platform/auth/guard.py:4:23 error central module shop.platform.auth.guard must not import feature orders
+ARC005 shop/shared/money.py:1:50 error shared module shop.shared.money must not import feature billing
+ARC005 shop/shared/money.py:1:50 error shared module shop.shared.money must not import feature billing
+ARC005 shop/shared/money.py:1:50 error shared module shop.shared.money must not import feature billing
+ARC005 shop/shared/money.py:1:50 error shared module shop.shared.money must not import feature billing
+ARC005 shop/shared/money.py:1:50 error shared module shop.shared.money must not import feature billing
+ARC005 shop/shared/money.py:1:50 error shared module shop.shared.money must not import feature orders
+ARC005 shop/shared/money.py:1:50 error shared module shop.shared.money must not import feature orders
+ARC005 shop/shared/money.py:1:50 error shared module shop.shared.money must not import feature orders
+ARC005 shop/shared/money.py:1:50 error shared module shop.shared.money must not import feature orders
+ARC005 shop/shared/money.py:1:50 error shared module shop.shared.money must not import feature orders
+ARC005 shop/shared/wired.py:1:44 error shared module shop.shared.wired must not import feature billing
+ARC005 shop/shared/wired.py:1:44 error shared module shop.shared.wired must not import feature billing
+ARC005 shop/shared/wired.py:1:44 error shared module shop.shared.wired must not import feature billing
+ARC005 shop/shared/wired.py:1:44 error shared module shop.shared.wired must not import feature billing
+ARC005 shop/shared/wired.py:1:44 error shared module shop.shared.wired must not import feature billing
+ARC005 shop/shared/wired.py:1:44 error shared module shop.shared.wired must not import feature orders
+ARC005 shop/shared/wired.py:1:44 error shared module shop.shared.wired must not import feature orders
+ARC005 shop/shared/wired.py:1:44 error shared module shop.shared.wired must not import feature orders
+ARC005 shop/shared/wired.py:1:44 error shared module shop.shared.wired must not import feature orders
+ARC005 shop/shared/wired.py:1:44 error shared module shop.shared.wired must not import feature orders
+ARC006 shop/features/billing/application/charges.py:2:54 error shop.features.billing.application.charges must not import the composition root shop.main
+ARC006 shop/features/billing/application/charges.py:2:54 error shop.features.billing.application.charges must not import the wiring module shop.features.billing.providers
+ARC006 shop/features/billing/application/charges.py:4:44 error shop.features.billing.application.charges must not import the wiring module shop.features.orders.providers
+ARC006 shop/features/billing/domain/invoice.py:1:47 error shop.features.billing.domain.invoice must not import the composition root shop.main
+ARC006 shop/features/billing/domain/invoice.py:1:47 error shop.features.billing.domain.invoice must not import the wiring module shop.features.billing.providers
+ARC006 shop/features/billing/domain/invoice.py:1:47 error shop.features.billing.domain.invoice must not import the wiring module shop.features.orders.providers
+ARC006 shop/features/billing/infra/gateway.py:1:55 error shop.features.billing.infra.gateway must not import the composition root shop.main
+ARC006 shop/features/billing/infra/gateway.py:1:55 error shop.features.billing.infra.gateway must not import the wiring module shop.features.billing.providers
+ARC006 shop/features/billing/infra/gateway.py:1:55 error shop.features.billing.infra.gateway must not import the wiring module shop.features.orders.providers
+ARC006 shop/features/billing/root_helper.py:1:47 error shop.features.billing.root_helper must not import the composition root shop.main
+ARC006 shop/features/billing/root_helper.py:1:47 error shop.features.billing.root_helper must not import the wiring module shop.features.billing.providers
+ARC006 shop/features/billing/root_helper.py:1:47 error shop.features.billing.root_helper must not import the wiring module shop.features.orders.providers
+ARC006 shop/features/orders/__init__.py:1:24 error shop.features.orders must not import the composition root shop.main
+ARC006 shop/features/orders/__init__.py:1:24 error shop.features.orders must not import the wiring module shop.features.billing.providers
+ARC006 shop/features/orders/application/service.py:6:23 error shop.features.orders.application.service must not import the composition root shop.main
+ARC006 shop/features/orders/application/service.py:6:23 error shop.features.orders.application.service must not import the wiring module shop.features.billing.providers
+ARC006 shop/features/orders/application/service.py:6:23 error shop.features.orders.application.service must not import the wiring module shop.features.orders.providers
+ARC006 shop/features/orders/domain/order.py:11:58 error shop.features.orders.domain.order must not import the composition root shop.main
+ARC006 shop/features/orders/domain/order.py:11:58 error shop.features.orders.domain.order must not import the wiring module shop.features.billing.providers
+ARC006 shop/features/orders/domain/order.py:11:58 error shop.features.orders.domain.order must not import the wiring module shop.features.orders.providers
+ARC006 shop/features/orders/infra/sql.py:2:49 error shop.features.orders.infra.sql must not import the wiring module shop.features.orders.providers
+ARC006 shop/features/orders/infra/sql.py:3:54 error shop.features.orders.infra.sql must not import the composition root shop.main
+ARC006 shop/features/orders/infra/sql.py:3:54 error shop.features.orders.infra.sql must not import the wiring module shop.features.billing.providers
+ARC006 shop/platform/auth/__init__.py:1:20 error shop.platform.auth must not import the composition root shop.main
+ARC006 shop/platform/auth/guard.py:4:23 error shop.platform.auth.guard must not import the composition root shop.main
+ARC006 shop/shared/money.py:1:50 error shop.shared.money must not import the composition root shop.main
+ARC006 shop/shared/wired.py:1:44 error shop.shared.wired must not import the composition root shop.main
+ARC006 shop/tools/style/__init__.py:1:22 error shop.tools.style must not import the composition root shop.main
+ARC006 shop/tools/style/__init__.py:1:22 error shop.tools.style must not import the wiring module shop.features.billing.providers
+ARC006 shop/tools/style/__init__.py:1:22 error shop.tools.style must not import the wiring module shop.features.orders.providers
+ARC006 shop/tools/style/sibling.py:20:27 error shop.tools.style.sibling must not import the composition root shop.main
+ARC006 shop/tools/style/sibling.py:20:27 error shop.tools.style.sibling must not import the wiring module shop.features.billing.providers
+ARC006 shop/tools/style/sibling.py:20:27 error shop.tools.style.sibling must not import the wiring module shop.features.orders.providers
+ARC007 shop/features/billing/application/charges.py:3:47 error shop.features.billing.application.charges imports private module shop.features.orders.domain.order of contract "slices"
+ARC007 shop/features/billing/application/charges.py:4:44 error shop.features.billing.application.charges imports private module shop.features.orders.providers of contract "slices"
+ARC007 shop/features/billing/infra/gateway.py:2:44 error shop.features.billing.infra.gateway imports private module shop.features.orders.infra.sql of contract "slices"
+ARC007 shop/features/billing/root_helper.py:1:47 error shop.features.billing.root_helper imports private module shop.features.orders.domain.order of contract "slices"
+ARC007 shop/features/orders/application/service.py:2:50 error shop.features.orders.application.service imports private module shop.features.billing.domain.invoice of contract "slices"
+ARC007 shop/features/orders/application/service.py:3:49 error shop.features.orders.application.service imports private module shop.features.billing.infra.gateway of contract "slices"
+ARC007 shop/features/orders/infra/sql.py:2:49 error shop.features.orders.infra.sql imports private module shop.features.billing.infra.gateway of contract "slices"
+ARC007 shop/features/orders/providers.py:1:49 error shop.features.orders.providers imports private module shop.features.billing.infra.gateway of contract "slices"
+ARC007 shop/main.py:1:45 error shop.main imports private module shop.features.billing.providers of contract "slices"
+ARC007 shop/main.py:2:44 error shop.main imports private module shop.features.orders.providers of contract "slices"
+ARC007 shop/platform/auth/guard.py:3:47 error shop.platform.auth.guard imports private module shop.features.orders.domain.order of contract "slices"
+ARC007 shop/shared/money.py:1:50 error shop.shared.money imports private module shop.features.billing.domain.invoice of contract "slices"
+ARC007 shop/shared/wired.py:1:44 error shop.shared.wired imports private module shop.features.orders.providers of contract "slices"
+ARC007 shop/tools/style/sibling.py:20:27 error shop.tools.style.sibling imports private module shop.platform.auth of contract "platform_api"
+ARC011 shop/features/catalog/nested/other/__init__.py:None:None error catalog contains package other, which is not a declared layer (domain, application, infra, alpha, beta, platform)
+ARC011 shop/features/orders/_hidden/__init__.py:None:None error orders contains package _hidden, which is not a declared layer (domain, application, infra, alpha, beta, platform)
+ARC011 shop/features/orders/models/__init__.py:None:None error orders contains package models, which is not a declared layer (domain, application, infra, alpha, beta, platform)
+ARC013 None:None:None error exclusion "vendor/**" has no coverage reason
+ARC013 shop/__main__.py:None:None error shop/__main__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/_private.py:None:None error shop/_private.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/features/billing/root_helper.py:None:None error shop/features/billing/root_helper.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/features/catalog/nested/loose.py:None:None error shop/features/catalog/nested/loose.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/features/catalog/nested/other/piece.py:None:None error shop/features/catalog/nested/other/piece.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/features/orders/_hidden/inner.py:None:None error shop/features/orders/_hidden/inner.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/features/orders/loose.py:None:None error shop/features/orders/loose.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/features/orders/models/record.py:None:None error shop/features/orders/models/record.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/__tools__.py:None:None error shop/tools/__tools__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/_tools/tools_inner.py:None:None error shop/tools/_tools/tools_inner.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/address/addres_book.py:None:None error shop/tools/address/addres_book.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/address/address_book.py:None:None error shop/tools/address/address_book.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/bases.py:None:None error shop/tools/bases.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/bus/bu_stop.py:None:None error shop/tools/bus/bu_stop.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/bus/bus_stop.py:None:None error shop/tools/bus/bus_stop.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/dupes/__init__.py:None:None error shop/tools/dupes/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/dupes/one.py:None:None error shop/tools/dupes/one.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/dupes/sub/three.py:None:None error shop/tools/dupes/sub/three.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/dupes/two.py:None:None error shop/tools/dupes/two.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/enums/attribute_write.py:None:None error shop/tools/enums/attribute_write.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/enums/kinds.py:None:None error shop/tools/enums/kinds.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/enums/shadowed.py:None:None error shop/tools/enums/shadowed.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/enums/shadowed_elsewhere.py:None:None error shop/tools/enums/shadowed_elsewhere.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/enums/star.py:None:None error shop/tools/enums/star.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/enums/uses.py:None:None error shop/tools/enums/uses.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/fan.py:None:None error shop/tools/fan.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/helpers/thing.py:None:None error shop/tools/helpers/thing.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/left.py:None:None error shop/tools/left.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/literals/first.py:None:None error shop/tools/literals/first.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/literals/origin.py:None:None error shop/tools/literals/origin.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/literals/second.py:None:None error shop/tools/literals/second.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/literals/shadowed.py:None:None error shop/tools/literals/shadowed.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/literals/star.py:None:None error shop/tools/literals/star.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/misc.py:None:None error shop/tools/misc.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/pkg_a/four.py:None:None error shop/tools/pkg_a/four.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/pkg_a/one.py:None:None error shop/tools/pkg_a/one.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/pkg_b/three.py:None:None error shop/tools/pkg_b/three.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/pkg_b/two.py:None:None error shop/tools/pkg_b/two.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/right.py:None:None error shop/tools/right.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/ring_a.py:None:None error shop/tools/ring_a.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/ring_b.py:None:None error shop/tools/ring_b.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/ring_c.py:None:None error shop/tools/ring_c.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/ring_d.py:None:None error shop/tools/ring_d.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/shapes/many/__init__.py:None:None error shop/tools/shapes/many/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/shapes/many/copy_0.py:None:None error shop/tools/shapes/many/copy_0.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/shapes/many/copy_1.py:None:None error shop/tools/shapes/many/copy_1.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/shapes/many/copy_2.py:None:None error shop/tools/shapes/many/copy_2.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/shapes/many/copy_3.py:None:None error shop/tools/shapes/many/copy_3.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/shapes/many/copy_4.py:None:None error shop/tools/shapes/many/copy_4.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/shapes/many/copy_5.py:None:None error shop/tools/shapes/many/copy_5.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/shapes/many/copy_6.py:None:None error shop/tools/shapes/many/copy_6.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/shapes/one.py:None:None error shop/tools/shapes/one.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/shapes/two.py:None:None error shop/tools/shapes/two.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/status/statu_line.py:None:None error shop/tools/status/statu_line.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/style/nested/leaf.py:None:None error shop/tools/style/nested/leaf.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/style/nested/sibling.py:None:None error shop/tools/style/nested/sibling.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/style/other.py:None:None error shop/tools/style/other.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/style/sibling.py:None:None error shop/tools/style/sibling.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/style/strict/mod.py:None:None error shop/tools/style/strict/mod.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/style/strict/sibling.py:None:None error shop/tools/style/strict/sibling.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/tools_1x.py:None:None error shop/tools/tools_1x.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/typed_left.py:None:None error shop/tools/typed_left.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/typed_right.py:None:None error shop/tools/typed_right.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tools/typed_third.py:None:None error shop/tools/typed_third.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC014 shop/features/billing/__init__.py:None:None error contract "slices" on shop.features.billing is missing public entry point shop.features.billing.missing.*
+ARC014 shop/features/billing/__init__.py:None:None error contract "slices" on shop.features.billing is missing required module shop.features.billing.api
+ARC014 shop/features/catalog/__init__.py:None:None error contract "slices" on shop.features.catalog is missing public entry point shop.features.catalog.application.*
+ARC014 shop/features/catalog/__init__.py:None:None error contract "slices" on shop.features.catalog is missing public entry point shop.features.catalog.missing.*
+ARC014 shop/features/catalog/__init__.py:None:None error contract "slices" on shop.features.catalog is missing required module shop.features.catalog.api
+ARC014 shop/features/catalog/__init__.py:None:None error contract "slices" on shop.features.catalog is missing required module shop.features.catalog.domain
+ARC014 shop/features/orders/__init__.py:None:None error contract "slices" on shop.features.orders is missing public entry point shop.features.orders.missing.*
+ARC014 shop/features/orders/__init__.py:None:None error contract "slices" on shop.features.orders is missing required module shop.features.orders.api
+ARC014 shop/platform/__init__.py:None:None error contract "platform_api" on shop.platform is missing required module shop.platform.absent
+CPX004 shop/tools/shapes/many/__init__.py:1:1 warning Function repeated repeats repeated in shop/tools/shapes/many/copy_0.py and 7 more
+CPX004 shop/tools/shapes/many/copy_0.py:1:1 warning Function repeated repeats repeated in shop/tools/shapes/many/__init__.py and 7 more
+CPX004 shop/tools/shapes/many/copy_1.py:1:1 warning Function repeated repeats repeated in shop/tools/shapes/many/__init__.py and 7 more
+CPX004 shop/tools/shapes/many/copy_2.py:1:1 warning Function repeated repeats repeated in shop/tools/shapes/many/__init__.py and 7 more
+CPX004 shop/tools/shapes/many/copy_3.py:1:1 warning Function repeated repeats repeated in shop/tools/shapes/many/__init__.py and 7 more
+CPX004 shop/tools/shapes/many/copy_4.py:1:1 warning Function repeated repeats repeated in shop/tools/shapes/many/__init__.py and 7 more
+CPX004 shop/tools/shapes/many/copy_5.py:1:1 warning Function repeated repeats repeated in shop/tools/shapes/many/__init__.py and 7 more
+CPX004 shop/tools/shapes/many/copy_6.py:1:1 warning Function repeated repeats repeated in shop/tools/shapes/many/__init__.py and 7 more
+CPX004 shop/tools/shapes/one.py:15:1 warning Function beta repeats beta_copy in shop/tools/shapes/two.py
+CPX004 shop/tools/shapes/one.py:31:1 warning Function elif_counts repeats elif_counts_copy in shop/tools/shapes/two.py
+CPX004 shop/tools/shapes/one.py:38:1 warning Function else_does_not_count repeats else_does_not_count_copy in shop/tools/shapes/two.py
+CPX004 shop/tools/shapes/one.py:46:1 warning Function decorated repeats decorated_copy in shop/tools/shapes/two.py
+CPX004 shop/tools/shapes/one.py:52:1 warning Function generic repeats generic_copy in shop/tools/shapes/two.py
+CPX004 shop/tools/shapes/one.py:58:1 warning Function nested_blocks repeats nested_blocks_copy in shop/tools/shapes/two.py
+CPX004 shop/tools/shapes/one.py:5:1 warning Function alpha repeats alpha_copy in shop/tools/shapes/two.py
+CPX004 shop/tools/shapes/two.py:29:1 warning Function beta_copy repeats beta in shop/tools/shapes/one.py
+CPX004 shop/tools/shapes/two.py:36:1 warning Function elif_counts_copy repeats elif_counts in shop/tools/shapes/one.py
+CPX004 shop/tools/shapes/two.py:43:1 warning Function else_does_not_count_copy repeats else_does_not_count in shop/tools/shapes/one.py
+CPX004 shop/tools/shapes/two.py:51:1 warning Function decorated_copy repeats decorated in shop/tools/shapes/one.py
+CPX004 shop/tools/shapes/two.py:57:1 warning Function undecorated repeats repeated in shop/tools/shapes/many/__init__.py and 7 more
+CPX004 shop/tools/shapes/two.py:5:1 warning Function alpha_copy repeats alpha in shop/tools/shapes/one.py
+CPX004 shop/tools/shapes/two.py:63:1 warning Function generic_copy repeats generic in shop/tools/shapes/one.py
+CPX004 shop/tools/shapes/two.py:69:1 warning Function nested_blocks_copy repeats nested_blocks in shop/tools/shapes/one.py
+IDM003 shop/tools/shapes/one.py:78:1 hint review Holder.method_is_ignored as __call__ with an operation-based class name
+IMP003 shop/features/billing/providers.py:1:1 error fix style expects a relative import of shop.features.billing.infra.gateway
+IMP003 shop/features/orders/providers.py:2:1 error fix style expects a relative import of shop.features.orders.infra.sql
+IMP003 shop/main.py:1:1 error fix style expects a relative import of shop.features.billing.providers
+IMP003 shop/main.py:2:1 error fix style expects a relative import of shop.features.orders.providers
+IMP003 shop/tools/enums/uses.py:1:1 error style expects a relative import of shop.tools.enums.kinds
+IMP003 shop/tools/enums/uses.py:2:1 error style expects a relative import of shop.tools.enums.kinds
+IMP003 shop/tools/enums/uses.py:4:1 error fix style expects a relative import of shop.tools.enums
+IMP003 shop/tools/enums/uses.py:5:1 error fix style expects a relative import of shop.tools.enums
+IMP003 shop/tools/style/__init__.py:2:1 error fix style expects a relative import of shop.tools.style.sibling
+IMP003 shop/tools/style/nested/leaf.py:1:1 error fix style expects an absolute import of shop.tools.style.other
+IMP003 shop/tools/style/nested/leaf.py:2:1 error fix style expects an absolute import of shop.tools.fan
+IMP003 shop/tools/style/nested/leaf.py:4:1 error fix style expects a relative import of shop.tools.style.nested
+IMP003 shop/tools/style/sibling.py:13:1 error fix style expects an absolute import of shop.tools
+IMP003 shop/tools/style/sibling.py:14:1 error fix style expects an absolute import of shop.tools.fan
+IMP003 shop/tools/style/sibling.py:15:1 error fix style expects an absolute import of shop
+IMP003 shop/tools/style/sibling.py:17:1 error fix style expects a relative import of shop.tools.style
+IMP003 shop/tools/style/sibling.py:18:1 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling.py:19:1 error fix style expects a relative import of shop.tools.style.nested.leaf
+IMP003 shop/tools/style/sibling.py:21:1 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling.py:22:1 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling.py:23:1 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling.py:27:1 error style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling.py:29:1 error style expects a relative import of shop.tools.style
+IMP003 shop/tools/style/sibling.py:30:1 error style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling.py:30:32 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling.py:34:5 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling.py:35:5 error fix style expects an absolute import of shop.tools.fan
+IMP003 shop/tools/style/sibling.py:36:5 error style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling.py:40:5 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling.py:41:5 error fix style expects an absolute import of shop.tools.fan
+IMP003 shop/tools/style/sibling.py:42:5 error style expects a relative import of shop.tools.style.nested
+IMP003 shop/tools/style/sibling.py:46:5 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling.py:50:5 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling.py:52:5 error fix style expects an absolute import of shop.tools.fan
+IMP003 shop/tools/style/sibling.py:8:1 error style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/strict/mod.py:1:1 error fix contract "absolute_imports" expects an absolute import of shop.tools.style.strict
+IMP003 shop/tools/style/strict/mod.py:2:1 error fix contract "absolute_imports" expects an absolute import of shop.tools.style.strict.sibling
+IMP003 shop/tools/style/strict/mod.py:3:1 error fix contract "absolute_imports" expects an absolute import of shop.tools.style.other
+IMP004 shop/features/billing/application/charges.py:4:1 hint fix import these names from the existing shop.features.orders package API
+IMP004 shop/main.py:2:1 hint fix import these names from the existing shop.features.orders package API
+IMP004 shop/shared/wired.py:1:1 hint fix import these names from the existing shop.features.orders package API
+LAY001 shop/shared/utils.py:None:None error module name "utils" is not allowed (shop.shared.utils)
+LAY001 shop/tools/helpers/__init__.py:None:None error package name "helpers" is not allowed (shop.tools.helpers)
+LAY001 shop/tools/misc.py:None:None error module name "misc" is not allowed (shop.tools.misc)
+LAY003 shop/_private.py:None:None error style forbids underscore-prefixed module name "_private" (shop._private)
+LAY003 shop/features/billing/infra/_billing_client.py:None:None error style forbids underscore-prefixed module name "_billing_client" (shop.features.billing.infra._billing_client)
+LAY003 shop/features/orders/_hidden/__init__.py:None:None error style forbids underscore-prefixed package name "_hidden" (shop.features.orders._hidden)
+LAY003 shop/tools/__tools__.py:None:None error style forbids underscore-prefixed module name "__tools__" (shop.tools.__tools__)
+LAY003 shop/tools/_tools/__init__.py:None:None error style forbids underscore-prefixed package name "_tools" (shop.tools._tools)
+LAY007 .config/tool.yml:None:None error filename must use .yaml: .config/tool.yml
+LAY007 deploy/compose.yml:None:None error filename must use .yaml: deploy/compose.yml
+LAY007 deploy/docker-compose.override.yaml:None:None error filename must use compose: deploy/docker-compose.override.yaml
+LAY007 deploy/docker-compose.yml:None:None error filename must use .yaml and compose: deploy/docker-compose.yml
+LAY007 settings.yml:None:None error filename must use .yaml: settings.yml
+LAY007 smelt.yml:None:None error filename must use .yaml: smelt.yml
+LAY009 shop/features/billing/infra/_billing_client.py:None:None hint module name "_billing_client" repeats "billing" from package "shop.features.billing"
+LAY009 shop/features/catalog/alpha/catalog_first.py:None:None hint module name "catalog_first" repeats "catalog" from package "shop.features.catalog"
+LAY009 shop/features/orders/application/application_log.py:None:None hint module name "application_log" repeats "application" from package "shop.features.orders.application"
+LAY009 shop/features/orders/application/log_application.py:None:None hint module name "log_application" repeats "application" from package "shop.features.orders.application"
+LAY009 shop/features/orders/application/order_service.py:None:None hint module name "order_service" repeats "order" from package "shop.features.orders"
+LAY009 shop/features/orders/application/orders_repository.py:None:None hint module name "orders_repository" repeats "orders" from package "shop.features.orders"
+LAY009 shop/tools/_tools/tools_inner.py:None:None hint module name "tools_inner" repeats "tools" from package "shop.tools._tools"
+LAY009 shop/tools/address/address_book.py:None:None hint module name "address_book" repeats "address" from package "shop.tools.address"
+LAY009 shop/tools/bus/bus_stop.py:None:None hint module name "bus_stop" repeats "bus" from package "shop.tools.bus"
+MOD001 shop/tools/enums/kinds.py:100:8 hint consider Color.GREEN directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds.py:101:11 hint consider Color.ALIAS directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds.py:103:9 hint consider Color.TYPED directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds.py:105:28 hint consider Color.SECOND directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds.py:105:9 hint consider Color.FIRST directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds.py:108:26 hint consider Color.DOTTED_AUTO directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds.py:108:8 hint consider Color.MADE directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds.py:111:5 hint consider Dotted.ONE directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds.py:112:5 hint consider Aliased.ONE directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds.py:127:11 hint consider Color.RED directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds.py:127:31 hint consider Color.GREEN directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds.py:128:16 hint consider Color.RED directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds.py:99:8 hint consider Color.RED directly; StrEnum members are already strings
+MOD001 shop/tools/enums/uses.py:11:5 hint consider Color.RED directly; StrEnum members are already strings
+MOD001 shop/tools/enums/uses.py:12:5 hint consider Short.ONE directly; StrEnum members are already strings
+MOD001 shop/tools/enums/uses.py:13:5 hint consider kinds.Color.RED directly; StrEnum members are already strings
+MOD001 shop/tools/enums/uses.py:14:5 hint consider direct.Color.GREEN directly; StrEnum members are already strings
+MOD001 shop/tools/enums/uses.py:15:5 hint consider package.Color.RED directly; StrEnum members are already strings
+MOD001 shop/tools/enums/uses.py:16:5 hint consider package.kinds_module.Color.RED directly; StrEnum members are already strings
+MOD001 shop/tools/enums/uses.py:17:5 hint consider package.Exported.ONE directly; StrEnum members are already strings
+MOD001 shop/tools/enums/uses.py:18:5 hint consider Reexported.GREEN directly; StrEnum members are already strings
+MOD001 shop/tools/enums/uses.py:19:5 hint consider Exported.ONE directly; StrEnum members are already strings
+MOD001 shop/tools/enums/uses.py:20:5 hint consider shop.tools.enums.Color.RED directly; StrEnum members are already strings
+MOD001 shop/tools/enums/uses.py:21:5 hint consider shop.tools.enums.kinds.Color.TYPED directly; StrEnum members are already strings
+MOD002 shop/tools/bases.py:14:1 error class "_Base" uses the forbidden Base prefix
+MOD002 shop/tools/bases.py:17:1 error class "BaseÄrger" uses the forbidden Base prefix
+MOD002 shop/tools/bases.py:19:1 error class "X_Base" uses the forbidden Base suffix
+MOD002 shop/tools/bases.py:20:1 error class "_Base_" uses the forbidden Base prefix
+MOD002 shop/tools/bases.py:21:1 error class "___Base" uses the forbidden Base prefix
+MOD002 shop/tools/bases.py:25:1 error class "DecoratedBase" uses the forbidden Base suffix
+MOD002 shop/tools/bases.py:29:5 error class "LocalBase" uses the forbidden Base suffix
+MOD002 shop/tools/bases.py:34:5 error class "InnerBase" uses the forbidden Base suffix
+MOD002 shop/tools/bases.py:5:1 error class "BaseRepository" uses the forbidden Base prefix
+MOD002 shop/tools/bases.py:6:1 error class "_MessageBase" uses the forbidden Base suffix
+MOD002 shop/tools/bases.py:7:1 error class "Base" uses the forbidden Base prefix
+MOD002 shop/tools/bases.py:8:1 error class "__Base" uses the forbidden Base prefix
+MOD002 shop/tools/bases.py:9:1 error class "Base_Thing" uses the forbidden Base prefix
+MOD004 shop/tools/enums/kinds.py:7:1 hint fix StrEnum Color derives values with auto()
+MOD009 shop/tools/dupes/__init__.py:1:1 warning Class Shared is also defined in shop.tools.dupes.one:1, shop.tools.dupes.two:6
+MOD009 shop/tools/dupes/one.py:1:1 warning Class Shared is also defined in shop.tools.dupes:1, shop.tools.dupes.two:6
+MOD009 shop/tools/dupes/one.py:2:1 warning Class Twice is also defined in shop.tools.dupes.two:7
+MOD009 shop/tools/dupes/one.py:3:1 warning Class Twice is also defined in shop.tools.dupes.two:7
+MOD009 shop/tools/dupes/two.py:6:1 warning Class Shared is also defined in shop.tools.dupes:1, shop.tools.dupes.one:1
+MOD009 shop/tools/dupes/two.py:7:1 warning Class Twice is also defined in shop.tools.dupes.one:2, shop.tools.dupes.one:3
+TYP005 shop/tools/literals/first.py:10:14 hint consider a shared alias for Literal['left', 'right']; 14 occurrences in shop
+TYP005 shop/tools/literals/first.py:24:35 hint consider a shared alias for Literal['down', 'up']; 5 occurrences in shop
+TYP005 shop/tools/literals/first.py:26:58 hint consider a shared alias for Literal['a', 'b']; 31 occurrences in shop
+TYP005 shop/tools/literals/first.py:29:10 hint consider a shared alias for Literal[None, False, True, -1, 0, 1, 16, 2]; 2 occurrences in shop
+TYP005 shop/tools/literals/first.py:31:6 hint consider a shared alias for Literal[-123456789012345678901234567890, 123456789012345678901234567890]; 2 occurrences in shop
+TYP005 shop/tools/literals/first.py:33:7 hint consider a shared alias for Literal["it's", '\\', '\x7f', 'both \' and "', 'say "hi"', 'tab\t', 'ä', '😀']; 2 occurrences in shop
+TYP005 shop/tools/literals/first.py:35:8 hint consider a shared alias for Literal[False, 0]; 2 occurrences in shop
+TYP005 shop/tools/literals/first.py:37:10 hint consider a shared alias for Literal[True, 1]; 2 occurrences in shop
+TYP005 shop/tools/literals/first.py:43:8 hint consider a shared alias for Literal['x', 'y']; 3 occurrences in shop
+TYP005 shop/tools/literals/second.py:3:7 hint consider a shared alias for Literal['left', 'right']; 14 occurrences in shop
+TYP005 shop/tools/literals/second.py:5:11 hint consider a shared alias for Literal['down', 'up']; 5 occurrences in shop
+TYP006 shop/tools/literals/first.py:16:9 hint 8 quoted annotation(s); the annotations future import already defers them
+VIS001 shop/tools/bases.py:1:1 warning decorator is public, but has no observed use outside its module
+VIS001 shop/tools/bases.py:28:1 warning outer is public, but has no observed use outside its module
+VIS001 shop/tools/dupes/two.py:11:1 warning nested is public, but has no observed use outside its module
+VIS001 shop/tools/dupes/two.py:1:1 warning decorator is public, but has no observed use outside its module
+VIS001 shop/tools/enums/shadowed_elsewhere.py:4:1 warning function is public, but has no observed use outside its module
+VIS001 shop/tools/literals/first.py:101:1 warning coroutine is public, but has no observed use outside its module
+VIS001 shop/tools/literals/first.py:105:1 warning default_is_skipped is public, but has no observed use outside its module
+VIS001 shop/tools/literals/first.py:116:5 warning Model.method is public, but has no observed use outside its class
+VIS001 shop/tools/literals/first.py:58:1 warning function is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/many/__init__.py:1:1 warning repeated is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/many/copy_0.py:1:1 warning repeated is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/many/copy_1.py:1:1 warning repeated is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/many/copy_2.py:1:1 warning repeated is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/many/copy_3.py:1:1 warning repeated is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/many/copy_4.py:1:1 warning repeated is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/many/copy_5.py:1:1 warning repeated is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/many/copy_6.py:1:1 warning repeated is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one.py:15:1 warning beta is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one.py:21:1 warning too_short is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one.py:25:1 warning docstring_is_not_counted is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one.py:31:1 warning elif_counts is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one.py:38:1 warning else_does_not_count is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one.py:52:1 warning generic is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one.py:58:1 warning nested_blocks is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one.py:5:1 warning alpha is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one.py:79:5 warning Holder.method_is_ignored is public, but has no observed use outside its class
+VIS001 shop/tools/shapes/two.py:14:1 warning alpha_default_differs is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/two.py:23:1 warning beta_not_async is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/two.py:29:1 warning beta_copy is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/two.py:36:1 warning elif_counts_copy is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/two.py:43:1 warning else_does_not_count_copy is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/two.py:57:1 warning undecorated is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/two.py:5:1 warning alpha_copy is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/two.py:63:1 warning generic_copy is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/two.py:69:1 warning nested_blocks_copy is public, but has no observed use outside its module
+VIS001 shop/tools/style/sibling.py:39:1 warning function is public, but has no observed use outside its module
+VIS001 shop/tools/typed_left.py:4:1 warning later is public, but has no observed use outside its module
+VIS002 shop/tools/literals/first.py:11:6 warning Generic is public, but has no observed use outside its module or public-signature evidence
+VIS004 shop/tools/literals/first.py:110:5 warning Model.field is public, but has no observed access outside its class
+VIS004 shop/tools/literals/first.py:111:5 warning Model.self_attr is public, but has no observed access outside its class
+VIS008 shop/tools/enums/__init__.py:1:20 warning fix use a plain import for Color under the __all__ convention

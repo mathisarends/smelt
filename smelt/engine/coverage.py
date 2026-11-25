@@ -8,41 +8,10 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections import Counter
 from typing import TYPE_CHECKING, Any
 
-from smelt.analysis.workspace import workspace_members
-from smelt.model import ModuleKind
-
 if TYPE_CHECKING:
-    from smelt.analysis.context import AnalysisContext
     from smelt.config.models import SmeltConfig
-
-
-def analysis_facts(
-    ctx: AnalysisContext,
-    *,
-    include_ordering: bool = False,
-    include_test_quality: bool = False,
-) -> dict[str, Any]:
-    """What the analysis found about coverage; the native core reports the same."""
-    inventory = ctx.coverage
-    facts: dict[str, Any] = {
-        **inventory.summary(),
-        "inventory": [entry.to_json() for entry in inventory.entries],
-        "modules": _classification(ctx),
-        "contracts": ctx.contracts.describe(),
-        "python_targets": ctx.python_targets.describe(),
-        "omitted_workspace_members": _omitted_members(ctx),
-    }
-    if include_ordering and ctx.ordering.files:
-        facts["ordering"] = ctx.ordering.summary()
-    if include_test_quality and ctx.test_syntax.modules:
-        facts["test_quality"] = {
-            "files": len(ctx.test_syntax.modules),
-            "collected_tests": ctx.test_syntax.collected_tests(),
-        }
-    return facts
 
 
 def effective_coverage(
@@ -175,54 +144,3 @@ _SUMMARY = (
     "unexplained_exclusions",
     "discovery_errors",
 )
-
-
-def _classification(ctx: AnalysisContext) -> dict[str, int]:
-    """Source modules by architecture kind; wiring and central ones also counted apart."""
-    counts: Counter[str] = Counter({kind.value: 0 for kind in ModuleKind})
-    wiring = central = 0
-    for module in ctx.files.sources:
-        info = ctx.model.info(module)
-        kind = info.kind if info else ModuleKind.UNCLASSIFIED
-        counts[kind.value] += 1
-        wiring += bool(info and info.wiring)
-        central += bool(info and info.central)
-    return {
-        "total": len(ctx.files.sources),
-        **dict(counts),
-        "wiring": wiring,
-        "central": central,
-    }
-
-
-def _omitted_members(ctx: AnalysisContext) -> list[dict[str, Any]]:
-    """Workspace members, declared next to the config, whose code is not analyzed."""
-    configured = set(ctx.config.project.root_packages)
-    analyzed = {
-        directory
-        for source in ctx.files.sources.values()
-        for directory in ctx.files.resolve_path(source.absolute).parents
-    }
-    omitted: list[dict[str, Any]] = []
-    for member in workspace_members(ctx.root, store=ctx.store):
-        if member.skipped:
-            omitted.append({"path": member.path, "reason": member.skipped})
-            continue
-        if member.source_root is None:
-            continue
-        missing = [name for name in member.packages if name not in configured]
-        uncovered = [
-            f"{member.source_root}/{name}"
-            for name in member.packages
-            if name in configured
-            and ctx.files.resolve_path(ctx.root / member.source_root / name)
-            not in analyzed
-        ]
-        reasons = []
-        if missing:
-            reasons.append("not in project.root_packages: " + ", ".join(missing))
-        if uncovered:
-            reasons.append("no analyzed source files in: " + ", ".join(uncovered))
-        if reasons:
-            omitted.append({"path": member.path, "reason": "; ".join(reasons)})
-    return omitted

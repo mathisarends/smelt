@@ -1,0 +1,17 @@
+modules: 12, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 5, "governed": 0, "unclassified": 7, "uncovered": 0} complete=False
+ARC009 packages/core/src/core/model.py:4:26 error member=packages/core member packages/core must not depend on services/api
+ARC009 packages/core/src/core/views.py:1:22 error member=packages/core member packages/core must not depend on services/api
+ARC009 packages/tools/src/tools/helpers.py:1:24 error member=packages/tools member packages/tools must not depend on packages/core
+ARC009 services/admin/src/admin/panel.py:1:22 error member=services/admin member services/admin must not depend on services/api
+ARC010 packages/core/src/core/model.py:4:26 error member=packages/core member packages/core imports services/api without a declared dependency on web-api
+ARC010 packages/core/src/core/views.py:1:22 error member=packages/core member packages/core imports services/api without a declared dependency on web-api
+ARC010 services/admin/src/admin/panel.py:1:22 error member=services/admin member services/admin imports services/api without a declared dependency on web-api
+ARC013 libs/shared/src/shared/text.py:None:None error member=libs/shared libs/shared/src/shared/text.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 packages/core/src/acme/corepart.py:None:None error member=packages/core packages/core/src/acme/corepart.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 packages/core/src/core/model.py:None:None error member=packages/core packages/core/src/core/model.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 packages/core/src/core/views.py:None:None error member=packages/core packages/core/src/core/views.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 packages/tools/src/tools/helpers.py:None:None error member=packages/tools packages/tools/src/tools/helpers.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 services/admin/src/admin/panel.py:None:None error member=services/admin services/admin/src/admin/panel.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 services/api/src/api/http.py:None:None error member=services/api services/api/src/api/http.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+VIS002 packages/core/src/acme/corepart.py:1:1 warning member=packages/core VALUE is public, but has no observed use outside its module or public-signature evidence

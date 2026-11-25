@@ -257,15 +257,15 @@ def test_complete_staged_check_needs_no_git_process_with_native_service(
     (tmp_path / "app/caller.py").write_text("# removed last caller\n")
     git(tmp_path, "add", "app/caller.py")
     monkeypatch.chdir(tmp_path)
-    # The cached Python engine reads the index through the native service.
-    monkeypatch.setenv("SMELT_CORE", "python")
     args = ["check", "--staged", "--format", "json", "--fail-on", "warning"]
-    expected_code = main([*args, "--no-cache"])
-    expected = json.loads(capsys.readouterr().out)
+    real_run = subprocess.run
 
-    def no_git(*args: object, **kwargs: object) -> None:
-        pytest.fail("a standard staged check must use the native Git reader")
+    def no_git(command: list[str], *args: object, **kwargs: object) -> object:
+        if Path(command[0]).stem == "git":
+            pytest.fail("a standard staged check must use the native Git reader")
+        return real_run(command, *args, **kwargs)  # type: ignore[call-overload]
 
     monkeypatch.setattr(subprocess, "run", no_git)
-    assert main(args) == expected_code == 1
-    assert json.loads(capsys.readouterr().out) == expected
+    assert main(args) == 1
+    report = json.loads(capsys.readouterr().out)
+    assert [finding["code"] for finding in report["violations"]] == ["VIS001"]

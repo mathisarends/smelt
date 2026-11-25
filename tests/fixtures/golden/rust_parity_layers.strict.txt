@@ -1,0 +1,39 @@
+modules: 48, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 13, "governed": 20, "unclassified": 15, "uncovered": 0} complete=False
+ARC001 core/kernel/__init__.py:1:30 error kernel must not depend on logic
+ARC001 core/kernel/inner.py:3:33 error kernel must not depend on web
+ARC001 core/logic/rules.py:4:33 error logic must not depend on web
+ARC001 core/model/base.py:3:30 error model must not depend on logic
+ARC001 core/web/api/routes.py:3:29 error web must not depend on model
+ARC001 extras/kernel/deep/__init__.py:1:31 error kernel must not depend on logic
+ARC001 extras/logic/more.py:1:33 error logic must not depend on web
+ARC003 core/model/base.py:2:8 error model must not import pydantic (model allows only: attrs)
+ARC003 extras/model/data.py:1:8 error model must not import yaml (model allows only: attrs)
+ARC006 core/logic/rules.py:1:23 error core.logic.rules must not import the composition root core.boot
+ARC006 core/logic/rules.py:2:31 error core.logic.rules must not import the wiring module core.logic.wiring
+ARC011 core/unknown/__init__.py:None:None error core contains package unknown, which is not a declared layer (model, logic, kernel, web)
+ARC011 core/web/other/__init__.py:None:None error core contains package other, which is not a declared layer (model, logic, kernel, web)
+ARC011 plain/deep/__init__.py:None:None error plain contains package deep, which is not a declared layer (model, logic, kernel, web)
+ARC011 wired/a/__init__.py:None:None error wired contains package a, which is not a declared layer (model, logic, kernel, web)
+ARC011 wired/b/__init__.py:None:None error wired contains package b, which is not a declared layer (model, logic, kernel, web)
+ARC013 core/kinds.py:None:None error core/kinds.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/literal_a.py:None:None error core/literal_a.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/loose.py:None:None error core/loose.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/twin.py:None:None error core/twin.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/unknown/piece.py:None:None error core/unknown/piece.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/web/other/view.py:None:None error core/web/other/view.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 extras/kernel/shallow.py:None:None error extras/kernel/shallow.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 extras/kind_use.py:None:None error extras/kind_use.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 extras/literal_b.py:None:None error extras/literal_b.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 extras/loose.py:None:None error extras/loose.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 extras/twin.py:None:None error extras/twin.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 plain/deep/leaf.py:None:None error plain/deep/leaf.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 plain/mod.py:None:None error plain/mod.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 wired/a/thing.py:None:None error wired/a/thing.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 wired/b/sub/leaf.py:None:None error wired/b/sub/leaf.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+LAY001 core/unknown/piece.py:None:None error module name "piece" is not allowed (core.unknown.piece)
+LAY007 compose.dev.yml:None:None error filename must use docker-compose: compose.dev.yml
+LAY007 compose.yaml:None:None error filename must use docker-compose: compose.yaml
+MOD001 extras/kind_use.py:3:9 hint consider Kind.ONE directly; StrEnum members are already strings
+VIS001 core/twin.py:1:1 warning repeated is public, but has no observed use outside its module
+VIS001 extras/twin.py:1:1 warning repeated is public, but has no observed use outside its module

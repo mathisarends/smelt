@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,19 +9,11 @@ from smelt.analysis.errors import (
     InvalidOptionError as InvalidOptionError,  # noqa: PLC0414 - preserve the public engine exception import
 )
 from smelt.analysis.files import FileIndex
-from smelt.analysis.parsing import AnalysisError
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
-from smelt.config.patterns import module_matches, path_matches
-from smelt.config.workspace import debt_scope_for_path, debt_scopes, scope_for_path
+from smelt.config.workspace import debt_scope_for_path, debt_scopes
 from smelt.diagnostics.debt import Debt, DebtEntry
-from smelt.diagnostics.dedupe import deduplicate
 from smelt.diagnostics.fixes import FixAvailability
 from smelt.diagnostics.report import ConfigurationDiagnostic, Report, RuleMeta
-from smelt.diagnostics.suppressions import (
-    Suppression,
-    is_rule_name,
-    parse_suppressions,
-)
 from smelt.diagnostics.violation import (
     Category,
     Severity,
@@ -30,37 +21,24 @@ from smelt.diagnostics.violation import (
     docs_url,
 )
 from smelt.engine import native_core
-from smelt.engine.analysis import Analysis
 from smelt.engine.changes import Comparison, resolve_comparison
-from smelt.engine.coverage import analysis_facts, effective_coverage
-from smelt.engine.facade_coverage import uncovered_facades, uncovered_imports
-from smelt.engine.git_source import GitSourceStore
 from smelt.engine.paths import missing_paths, project_metadata
-from smelt.engine.rule_policy import missing_rule_policies
 from smelt.engine.rule_settings import RuleSettings
 from smelt.rules.meta import (
-    MissingRulePolicy,
     ResolvedDebt,
-    SuppressionWithoutReason,
-    UncoveredPackageFacade,
-    UnusedSuppression,
-    unknown_identifier_fix,
-    unused_suppression_fix,
 )
 from smelt.rules.registry import build_rule_set
 from smelt.rules.renames import retired_hint
-from smelt.rules.structure.package_imports import PreferPackageImport
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable
 
     from smelt.config.loader import LoadedConfig
     from smelt.config.source import SourceStore
-    from smelt.diagnostics.fixes import Fix
     from smelt.rules.activation import PolicyActivation
     from smelt.rules.base import RuleContract, RuleSet
 
-# Test-quality rules; any of them adds test-quality coverage to the report.
+# The test-quality rules, which `smelt evaluate` selects by default.
 TEST_QUALITY_CODES = (
     "TST002",
     "TST003",
@@ -71,15 +49,6 @@ TEST_QUALITY_CODES = (
     "TST008",
     "TST009",
     "TST010",
-)
-_META = frozenset(
-    {
-        "MET001",
-        "MET002",
-        "MET003",
-        MissingRulePolicy.code,
-        UncoveredPackageFacade.code,
-    }
 )
 _COVERAGE = "ARC013"
 
@@ -145,11 +114,10 @@ def run_check(
     loaded: LoadedConfig,
     options: CheckOptions,
     *,
-    rules: RuleSet | None = None,
     context: AnalysisContext | None = None,
 ) -> CheckOutcome:
     try:
-        return _run_check(loaded, options, rules=rules, context=context)
+        return _run_check(loaded, options, context=context)
     except ConfigError as exc:
         explained = loaded.explain_error(exc)
         if explained is exc:
@@ -192,7 +160,6 @@ def _run_check(
     loaded: LoadedConfig,
     options: CheckOptions,
     *,
-    rules: RuleSet | None,
     context: AnalysisContext | None,
 ) -> CheckOutcome:
     config = loaded.config
@@ -201,12 +168,7 @@ def _run_check(
         loaded = replace(loaded, config=config)
     # The native core analyzes the working tree or the staged index with the
     # built-in rules.
-    native = (
-        native_core.selected()
-        and rules is None
-        and (loaded.source is None or isinstance(loaded.source, GitSourceStore))
-    )
-    rules = rules or build_rule_set(lazy=True)
+    rules = build_rule_set(lazy=True)
     active = _resolve_active_rules(rules, loaded, options)
     ctx = _analysis_context(loaded, context)
     _validate_ownership(ctx, loaded)
@@ -216,27 +178,12 @@ def _run_check(
     settings.validate_packages(ctx)
     if options.paths:
         _validate_scope(ctx, options.paths)
-    compared = _comparison(ctx, options) if native and options.changed else None
-    baseline: Debt | None = None
-    if native:
-        result = _native_analysis(rules, loaded, options, compared=compared)
-        analyzed, baseline = result.analysis, result.baseline
-        # A fix applies only to the text the core judged.
-        ctx.files.observe(result.digests)
-    else:
-        analyzed = _python_analysis(ctx, rules, loaded, active=active, options=options)
-    violations, suppressed = (
-        analyzed.violations
-        # The native core judges the configuration together with the sources.
-        + (
-            []
-            if native
-            else _configured_policy_findings(
-                ctx, rules, loaded, active=active, options=options
-            )
-        ),
-        analyzed.suppressed,
-    )
+    compared = _comparison(ctx, options) if options.changed else None
+    result = _native_analysis(rules, loaded, options, compared=compared)
+    analyzed, baseline = result.analysis, result.baseline
+    # A fix applies only to the text the core judged.
+    ctx.files.observe(result.digests)
+    violations, suppressed = analyzed.violations, analyzed.suppressed
     unfiltered = list(violations)
     coverage_gaps = [v for v in violations if v.code == _COVERAGE]
     violations = [v for v in violations if v.code != _COVERAGE]
@@ -246,18 +193,9 @@ def _run_check(
     )
     violations = debt.violations
     comparison = compared[1] if compared else None
-    if compared and baseline is not None:
+    if baseline is not None:
         _read_quoted_sources(ctx, violations)
         violations = baseline.match(violations, snippet_reader(ctx))[0]
-    elif options.changed and not native:
-        violations, comparison = _introduced(
-            ctx,
-            violations,
-            lambda before: _collect(
-                before, rules, loaded, active=active, options=options
-            )[0],
-            options=options,
-        )
 
     violations = coverage_gaps + [v for v in violations if _in_scope(v, options)]
     violations.sort(key=Violation.sort_key)
@@ -366,31 +304,6 @@ def _read_quoted_sources(ctx: AnalysisContext, violations: list[Violation]) -> N
     )
 
 
-def _python_analysis(
-    ctx: AnalysisContext,
-    rules: RuleSet,
-    loaded: LoadedConfig,
-    *,
-    active: list[tuple[RuleContract, Severity]],
-    options: CheckOptions,
-) -> Analysis:
-    violations, suppressed = _collect(
-        ctx, rules, loaded, active=active, options=options
-    )
-    facts = analysis_facts(
-        ctx,
-        include_ordering=any(rule.code == "LAY004" for rule, _ in active),
-        include_test_quality=any(rule.code in TEST_QUALITY_CODES for rule, _ in active),
-    )
-    return Analysis(
-        violations,
-        suppressed,
-        effective_coverage(ctx.config, facts, include_inventory=True),
-        len(ctx.files.sources),
-        list(ctx.files.all_check_paths()),
-    )
-
-
 def _native_analysis(
     rules: RuleSet,
     loaded: LoadedConfig,
@@ -426,37 +339,6 @@ def _analysis_context(
     return AnalysisContext(loaded.root, loaded.config, store=loaded.source)
 
 
-def _configured_policy_findings(
-    ctx: AnalysisContext,
-    rules: RuleSet,
-    loaded: LoadedConfig,
-    *,
-    active: list[tuple[RuleContract, Severity]],
-    options: CheckOptions,
-) -> list[Violation]:
-    if options.paths or options.changed or options.staged:
-        return []
-    severity_of = {rule.code: severity for rule, severity in active}
-    configured = (
-        _resolve_active_rules(rules, loaded, replace(options, select=()))
-        if options.select
-        else active
-    )
-    codes = {rule.code for rule, _ in configured}
-    settings = RuleSettings(rules, loaded)
-    findings: list[Violation] = []
-    if (severity := severity_of.get(MissingRulePolicy.code)) is not None:
-        findings.extend(
-            missing_rule_policies(ctx, loaded, settings, codes=codes, severity=severity)
-        )
-    if (
-        severity := severity_of.get(UncoveredPackageFacade.code)
-    ) is not None and PreferPackageImport.code in codes:
-        evidence = _apply_ignores(ctx, list(uncovered_imports(ctx, settings)), rules)
-        findings.extend(uncovered_facades(ctx, evidence, settings, severity=severity))
-    return _apply_ignores(ctx, findings, rules)
-
-
 def _validate_ownership(ctx: AnalysisContext, loaded: LoadedConfig) -> None:
     declarations = ctx.config.structure.canonical_exports
     if not declarations:
@@ -472,37 +354,6 @@ def _validate_ownership(ctx: AnalysisContext, loaded: LoadedConfig) -> None:
         )
 
 
-def _introduced(
-    ctx: AnalysisContext,
-    violations: list[Violation],
-    collect: Callable[[AnalysisContext], list[Violation]],
-    *,
-    options: CheckOptions,
-) -> tuple[list[Violation], Comparison]:
-    """The violations the working tree adds to the base commit, judged by today's config."""
-    root = options.comparison_root or ctx.root
-    repository, comparison = _comparison(ctx, options)
-    if comparison.revision is None:
-        return violations, comparison
-    # The base is read from Git objects in every mode.
-    before_store = GitSourceStore.from_revision(repository, comparison.revision)
-    before_root = (
-        root
-        if isinstance(ctx.store, GitSourceStore)
-        else repository / root.resolve().relative_to(repository.resolve())
-    )
-    if not before_store.is_dir(before_root):
-        return violations, comparison
-    before_ctx = AnalysisContext(before_root, ctx.config, store=before_store)
-    # A committed README (or a newly added workspace package) is an empty
-    # historical inventory, not an analysis failure. Existing source still
-    # goes through normal parsing so corrupt baselines do not pass silently.
-    before = collect(before_ctx) if any(before_ctx.files.all_check_paths()) else []
-    known = Debt.from_violations(before, snippet_reader(before_ctx))
-    introduced, _, _ = known.match(violations, snippet_reader(ctx))
-    return introduced, comparison
-
-
 def _comparison(ctx: AnalysisContext, options: CheckOptions) -> tuple[Path, Comparison]:
     """The repository and the commit a `--changed` check compares with."""
     if options.comparison is not None and options.repository_root is not None:
@@ -516,76 +367,6 @@ def _comparison(ctx: AnalysisContext, options: CheckOptions) -> tuple[Path, Comp
     if options.staged:
         comparison = replace(comparison, staged=True)
     return repository, comparison
-
-
-def _collect(
-    ctx: AnalysisContext,
-    rules: RuleSet,
-    loaded: LoadedConfig,
-    *,
-    active: list[tuple[RuleContract, Severity]],
-    options: CheckOptions,
-) -> tuple[list[Violation], int]:
-    """Every violation after ignores and suppressions, and the suppressed count."""
-    ctx.store.prefetch(ctx.root / path for path in ctx.files.all_python_paths())
-    requires = frozenset(index for rule, _ in active for index in rule.requires)
-    ctx.ensure(requires)
-
-    policy = RuleSettings(rules, loaded)
-    violations: list[Violation] = []
-    for rule, _ in active:
-        if rule.code in _META:
-            continue
-        for violation in _rule_findings(rule, ctx):
-            severity = policy.severity(
-                rule,
-                ctx,
-                violation.source_module,
-                path=violation.path,
-                selected=bool(options.select),
-            )
-            if severity is not None:
-                violations.append(violation.with_severity(severity))
-    violations = deduplicate(violations)
-    violations = _apply_ignores(ctx, violations, rules)
-
-    active_codes = {rule.code for rule, _ in active}
-    severity_of = {rule.code: severity for rule, severity in active}
-    codes_by_name = {rule.name: rule.code for rule in rules.rules}
-    suppressions = [
-        suppression.resolve_names(codes_by_name)
-        for suppression in _collect_suppressions(ctx)
-    ]
-    violations, usage = _apply_suppressions(violations, suppressions)
-    # The rules a full run with this config would execute; the others are off and
-    # cannot need a suppression.
-    enabled = _resolve_active_rules(rules, loaded, CheckOptions())
-    enabled_codes = {rule.code for rule, _ in enabled} - _META
-    violations.extend(
-        _suppression_violations(
-            ctx,
-            usage,
-            active_codes,
-            codes=(codes_by_name, enabled_codes),
-            severity_of=severity_of,
-        )
-    )
-    return [
-        replace(finding, member=ctx.workspace.member_for_path(finding.path))
-        for finding in violations
-    ], sum(len(codes) for codes in usage.values())
-
-
-def _rule_findings(rule: RuleContract, ctx: AnalysisContext) -> Iterator[Violation]:
-    """Each member architecture judges the files of its own packages and members."""
-    if not (getattr(rule, "architecture_scoped", False) and ctx.model.parts):
-        yield from rule.check(ctx)
-        return
-    scopes = ctx.architecture_scopes
-    for scope in scopes:
-        for finding in rule.check(ctx.architecture_view(scope)):
-            if scope_for_path(scopes, finding.path) is scope:
-                yield finding
 
 
 def _resolve_active_rules(
@@ -673,216 +454,6 @@ def _prefix_suggestion(raw: str, known: set[str]) -> str:
         if sum(a != b for a, b in zip(code, wanted, strict=True)) == 1
     ]
     return f' (did you mean "{close[0]}"?)' if len(close) == 1 else ""
-
-
-def _apply_ignores(
-    ctx: AnalysisContext, violations: list[Violation], rules: RuleSet
-) -> list[Violation]:
-    entries = ctx.config.ignore
-    if not entries:
-        return violations
-    selections = [
-        (entry, frozenset(rules.matching_codes(entry.rule))) for entry in entries
-    ]
-    kept: list[Violation] = []
-    for violation in violations:
-        if violation.code == _COVERAGE:
-            kept.append(violation)
-            continue
-        module = violation.source_module or _module_for_path(ctx, violation.path)
-        ignored = any(
-            violation.code in codes
-            and (
-                (module and any(module_matches(p, module) for p in entry.modules))
-                or (
-                    violation.path
-                    and any(path_matches(p, violation.path) for p in entry.paths)
-                )
-            )
-            for entry, codes in selections
-        )
-        if not ignored:
-            kept.append(violation)
-    return kept
-
-
-def _module_for_path(ctx: AnalysisContext, path: str | None) -> str | None:
-    if path is None:
-        return None
-    source = ctx.files.source_for_path(path)
-    return source.module if source else None
-
-
-def _collect_suppressions(ctx: AnalysisContext) -> list[Suppression]:
-    found: list[Suppression] = []
-    ctx.store.prefetch(ctx.root / path for path in ctx.files.all_python_paths())
-    for path in ctx.files.all_python_paths():
-        text = ctx.files.read_text(path)
-        if "smelt:" in text:
-            found.extend(parse_suppressions(path, text))
-    return found
-
-
-def _apply_suppressions(
-    violations: list[Violation], suppressions: list[Suppression]
-) -> tuple[list[Violation], dict[Suppression, list[str]]]:
-    """Keep unsuppressed violations; map every suppression to the codes it hid."""
-    by_path: dict[str, list[Suppression]] = {}
-    for suppression in suppressions:
-        by_path.setdefault(suppression.path, []).append(suppression)
-    kept: list[Violation] = []
-    usage: dict[Suppression, list[str]] = {item: [] for item in suppressions}
-    for violation in violations:
-        if violation.code == _COVERAGE:
-            kept.append(violation)
-            continue
-        match = next(
-            (s for s in by_path.get(violation.path or "", []) if s.matches(violation)),
-            None,
-        )
-        if match is None:
-            kept.append(violation)
-        else:
-            usage[match].append(violation.code)
-    return kept, usage
-
-
-def _suppression_violations(
-    ctx: AnalysisContext,
-    usage: dict[Suppression, list[str]],
-    active_codes: set[str],
-    *,
-    codes: tuple[dict[str, str], set[str]],
-    severity_of: dict[str, Severity],
-) -> list[Violation]:
-    """MET001/MET002 findings; ``codes`` holds the catalog by name and the enabled codes."""
-    names, enabled = codes
-    known = set(names.values())
-    results: list[Violation] = []
-    unused_rule = UnusedSuppression()
-    reason_rule = SuppressionWithoutReason()
-    checked = active_codes - _META
-    for suppression, used in usage.items():
-        if (
-            "MET002" in active_codes
-            and ctx.config.suppressions.require_reason
-            and not suppression.reason
-        ):
-            results.append(
-                reason_rule.violation(
-                    "suppression without a reason",
-                    path=suppression.path,
-                    line=suppression.line,
-                    column=suppression.column + 1,
-                    hint="Append ` -- <why this exception is acceptable>` to the comment.",
-                ).with_severity(severity_of["MET002"])
-            )
-        if "MET001" not in active_codes:
-            continue
-        unknown = [
-            suppression.label(prefix)
-            for prefix in suppression.codes
-            if not any(code.startswith(prefix) for code in known)
-        ]
-        if unknown:
-            results.append(
-                unused_rule.violation(
-                    f"unknown suppression identifiers ({', '.join(unknown)})",
-                    path=suppression.path,
-                    line=suppression.line,
-                    column=suppression.column + 1,
-                    expected={"unknown_identifiers": unknown},
-                    hint=_unknown_identifier_hint(unknown, names),
-                    fix=_suppression_fix(
-                        ctx,
-                        suppression,
-                        partial(unknown_identifier_fix, unknown=unknown),
-                    ),
-                ).with_severity(severity_of["MET001"])
-            )
-        unused = _unused_codes(
-            suppression,
-            used,
-            checked=checked,
-            known=known,
-            enabled=enabled,
-        )
-        if unused is None:
-            continue
-        label = (
-            ", ".join(suppression.label(code) for code in unused)
-            if unused
-            else "all codes"
-        )
-        results.append(
-            unused_rule.violation(
-                f"unused suppression ({label})",
-                path=suppression.path,
-                line=suppression.line,
-                column=suppression.column + 1,
-                hint="Remove the suppression; nothing on this line needs it.",
-                fix=_suppression_fix(
-                    ctx, suppression, partial(unused_suppression_fix, unused=unused)
-                ),
-            ).with_severity(severity_of["MET001"])
-        )
-    return results
-
-
-def _suppression_fix(
-    ctx: AnalysisContext,
-    suppression: Suppression,
-    build: Callable[[str, Suppression], Fix | None],
-) -> Fix | None:
-    try:
-        text = ctx.files.read_text(suppression.path)
-    except AnalysisError:
-        return None
-    return build(text, suppression)
-
-
-def _unknown_identifier_hint(unknown: list[str], names: dict[str, str]) -> str:
-    """Point retired or misspelled identifiers to their replacement."""
-    suggestions = [
-        retired_hint(identifier, names)
-        or (did_you_mean(identifier, names) if is_rule_name(identifier) else "")
-        for identifier in unknown
-    ]
-    if not any(suggestions):
-        return "Use a rule name or a rule code; `smelt rules` lists both."
-    return " ".join(
-        f"{identifier}{suggestion}."
-        for identifier, suggestion in zip(unknown, suggestions, strict=True)
-        if suggestion
-    )
-
-
-def _unused_codes(
-    suppression: Suppression,
-    used: list[str],
-    *,
-    checked: set[str],
-    known: set[str],
-    enabled: set[str],
-) -> tuple[str, ...] | None:
-    """Codes to remove, ``()`` for the whole comment, None if the suppression is fine.
-
-    A code only counts as unused when every enabled rule it refers to actually ran;
-    a narrowed run (``--select``, ``--ignore``) cannot judge the others.
-    """
-    if not suppression.codes:
-        return None if used or not enabled <= checked else ()
-    evaluated = tuple(
-        prefix
-        for prefix in suppression.unused_codes(used)
-        if (matching := {code for code in known if code.startswith(prefix)})
-        and matching & enabled <= checked
-    )
-    if not evaluated:
-        return None
-    if len(evaluated) == len(suppression.codes):
-        return ()
-    return evaluated
 
 
 def _resolved_violations(

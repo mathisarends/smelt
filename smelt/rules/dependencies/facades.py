@@ -1,16 +1,7 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-_IMPORTER_PREVIEW = 4
 
 
 class FacadeExportGap(Rule):
@@ -60,91 +51,3 @@ class FacadeExportGap(Rule):
         ),
         config=("architecture.packages", "architecture.canonical_exports"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        contracts = ctx.contracts.facade_policies("min_importers_to_export")
-        if not contracts:
-            return
-        usage = ctx.facade_usage
-        ownership, _ = usage.canonical_exports(ctx.config.structure.canonical_exports)
-        for contract in contracts:
-            threshold = contract.spec.min_importers_to_export
-            if threshold is None or any(
-                not boundary.exposes(contract.package)
-                for boundary in ctx.contracts.resolved
-                if boundary.package == contract.package
-            ):
-                continue
-            for gap in usage.gaps(
-                contract.package, count_tests=contract.spec.count_tests
-            ):
-                importers = sorted((*gap.source_importers, *gap.test_importers))
-                if len(importers) < threshold:
-                    continue
-                qualified = f"{gap.module}.{gap.name}"
-                if qualified in ownership:
-                    continue
-                preview = ", ".join(importers[:_IMPORTER_PREVIEW])
-                if len(importers) > _IMPORTER_PREVIEW:
-                    preview += f", … (+{len(importers) - _IMPORTER_PREVIEW})"
-                cycle = (
-                    " -> ".join(gap.cycle)
-                    if gap.cycle
-                    else "no return path found in the analyzed explicit runtime import graph; initialization safety is unproven"
-                )
-                repair = f"Review exporting {gap.name} from {contract.package}"
-                relative = "." + gap.module.removeprefix(contract.package + ".")
-                suggested_import = f"from {relative} import {gap.name}"
-                if gap.needs_import:
-                    repair += f" with `{suggested_import}`; update __all__ if declared"
-                if not gap.needs_import:
-                    repair += " by adding it to __all__"
-                yield self.violation(
-                    f"{qualified} has {len(importers)} outside importers but is not exported by {contract.package}",
-                    path=gap.path,
-                    line=gap.line,
-                    column=gap.column,
-                    source_module=gap.module,
-                    target_module=contract.package,
-                    expected={
-                        "contract": contract.name,
-                        "package": contract.package,
-                        "name": gap.name,
-                        "definition": qualified,
-                        "min_importers_to_export": threshold,
-                        "count_tests": contract.spec.count_tests,
-                        "source_importers": list(gap.source_importers),
-                        "same_root_importers": [
-                            caller
-                            for caller in gap.source_importers
-                            if caller.split(".")[0] == gap.module.split(".")[0]
-                        ],
-                        "other_root_importers": [
-                            caller
-                            for caller in gap.source_importers
-                            if caller.split(".")[0] != gap.module.split(".")[0]
-                        ],
-                        "test_importers": list(gap.test_importers),
-                        "count": len(importers),
-                        "reexports": list(gap.reexports),
-                        "cycle_check": "cycle" if gap.cycle else "no-cycle-found",
-                        "cycle": list(gap.cycle),
-                        "needs_import": gap.needs_import,
-                        "automatic_rewrite": False,
-                        "suggested_import": suggested_import
-                        if gap.needs_import
-                        else None,
-                        "export_edges": [
-                            f"{contract.package}:{qualified} <- {caller}"
-                            for caller in importers
-                        ],
-                    },
-                    hint=f"{repair}. Importers: {preview}. Cycle check: {cycle}."
-                    + (
-                        f" Existing exports: {', '.join(gap.reexports)}."
-                        " Review whether one is already the canonical API before adding another export."
-                        if gap.reexports
-                        else ""
-                    ),
-                    edge=f"{qualified} -> {contract.package}",
-                )

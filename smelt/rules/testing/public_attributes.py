@@ -1,14 +1,6 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.member_names import private_name, rename_advice
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class TestOnlyPublicAttribute(Rule):
@@ -38,34 +30,3 @@ class TestOnlyPublicAttribute(Rule):
             "project.test_roots",
         ),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        boundary_for = ctx.contracts.public_attribute_boundary
-        for attribute, references in ctx.member_usage.test_only_attributes(
-            ctx.test_syntax, boundary_for=boundary_for
-        ):
-            qualified = f"{attribute.owner.name}.{attribute.name}"
-            suggested_name = private_name(attribute.name, attribute.occupied_names)
-            boundary = boundary_for(attribute.module)
-            yield self.violation(
-                f"{qualified} is public; among analyzed modules, only tests read it outside its defining {boundary}",
-                path=attribute.path,
-                line=attribute.node.lineno,
-                column=attribute.node.col_offset + 1,
-                source_module=attribute.module,
-                target_module=f"{attribute.module}.{qualified}",
-                expected={
-                    "class": attribute.owner.name,
-                    "attribute": attribute.name,
-                    "kind": attribute.kind,
-                    "suggested_name": suggested_name,
-                    "boundary": boundary,
-                    "usage_scope": ctx.member_usage.usage_scope,
-                    "internal_references": list(attribute.internal_references),
-                    "test_references": [
-                        {"path": path, "line": line} for path, line in references
-                    ],
-                    "automatic_rename": False,
-                },
-                hint=f"Unless public by design, {rename_advice(attribute.name, suggested_name)} and test public behavior instead.",
-            )

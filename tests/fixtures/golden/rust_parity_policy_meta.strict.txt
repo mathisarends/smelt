@@ -1,0 +1,22 @@
+modules: 15, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 6, "governed": 0, "unclassified": 9, "uncovered": 0} complete=False
+ARC008 shop/billing/invoice.py:1:1 hint shop.billing.invoice.Invoice has 3 outside importers but is not exported by shop.billing
+ARC013 shop/billing/invoice.py:None:None error shop/billing/invoice.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/cart.py:None:None error shop/cart.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/catalog/items.py:None:None error shop/catalog/items.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/checkout.py:None:None error shop/checkout.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/hidden/secret.py:None:None error shop/hidden/secret.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/ignored_caller.py:None:None error shop/ignored_caller.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/legacy/tasks.py:None:None error shop/legacy/tasks.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/orders/order.py:None:None error shop/orders/order.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/search.py:None:None error shop/search.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+MET004 base.yml:5:3 warning rules.imports/forbidden-import-style enables imports/forbidden-import-style without style.imports
+MET004 smelt.yml:25:9 warning style.overrides.legacy.rules.architecture/missing-facade-export enables architecture/missing-facade-export without architecture.packages.<name>.min_importers_to_export
+MET005 shop/catalog/__init__.py:1:1 hint shop.catalog does not re-export 2 names that 3 outside modules import from 1 implementation modules, so imports/prefer-package-import cannot apply
+MET005 shop/orders/__init__.py:1:1 hint shop.orders does not re-export 1 names that 2 outside modules import from 1 implementation modules, so imports/prefer-package-import cannot apply
+TYP006 shop/checkout.py:11:16 hint fix 1 quoted annotation(s); an annotations future import defers them
+VIS001 shop/cart.py:7:1 warning total is public, but has no observed use outside its module
+VIS001 shop/checkout.py:11:1 warning pay is public, but has no observed use outside its module
+VIS001 shop/ignored_caller.py:4:1 warning draft is public, but has no observed use outside its module
+VIS001 shop/legacy/tasks.py:1:1 warning run is public, but has no observed use outside its module
+VIS001 shop/search.py:6:1 warning find is public, but has no observed use outside its module

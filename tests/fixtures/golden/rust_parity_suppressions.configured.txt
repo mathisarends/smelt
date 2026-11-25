@@ -1,0 +1,28 @@
+modules: 5, suppressed: 10, in debt: 0
+coverage: {"excluded": 0, "facade": 1, "governed": 0, "unclassified": 4, "uncovered": 0} complete=False
+MET001 audit/cases.py:20:43 warning fix unused suppression (CPX005)
+MET001 audit/cases.py:41:46 warning fix unused suppression (CPX003)
+MET001 audit/cases.py:44:13 warning fix unused suppression (all codes)
+MET001 audit/cases.py:45:18 warning fix unused suppression (all codes)
+MET001 audit/cases.py:46:19 warning fix unused suppression (all codes)
+MET001 audit/cases.py:47:15 warning fix unused suppression (all codes)
+MET001 audit/cases.py:49:1 warning fix unused suppression (all codes)
+MET001 audit/cases.py:50:13 warning fix unused suppression (all codes)
+MET001 audit/cases.py:51:12 warning fix unused suppression (all codes)
+MET001 audit/file_level.py:1:1 warning fix unused suppression (all codes)
+MET001 audit/ignored.py:4:37 warning fix unused suppression (all codes)
+MET001 audit/unknown.py:10:16 warning fix unknown suppression identifiers (made-up-rule)
+MET001 audit/unknown.py:3:11 warning fix unknown suppression identifiers (complexity/excess-positonal-parameters)
+MET001 audit/unknown.py:4:14 warning fix unknown suppression identifiers (complexity/deep-object-navigation)
+MET001 audit/unknown.py:5:13 warning fix unknown suppression identifiers (SMT325)
+MET001 audit/unknown.py:6:13 warning fix unknown suppression identifiers (SMT901)
+MET001 audit/unknown.py:7:17 warning fix unknown suppression identifiers (SMT999)
+MET001 audit/unknown.py:8:13 warning fix unknown suppression identifiers (information-hiding)
+MET001 audit/unknown.py:9:15 warning fix unknown suppression identifiers (XYZ123)
+MET001 audit/unknown.py:9:15 warning fix unused suppression (CPX003)
+MET001 tests/test_cases.py:4:22 warning fix unused suppression (all codes)
+MET001 tests/test_cases.py:8:25 warning fix unused suppression (all codes)
+MET002 audit/cases.py:24:44 error suppression without a reason
+MET002 audit/cases.py:46:19 error suppression without a reason
+MET002 audit/unknown.py:10:16 error suppression without a reason
+MET002 tests/test_cases.py:8:25 error suppression without a reason

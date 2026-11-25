@@ -1,0 +1,95 @@
+modules: 9, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 0, "governed": 0, "unclassified": 9, "uncovered": 0} complete=False
+ARC013 app/__init__.py:None:None error app/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/_private_module.py:None:None error app/_private_module.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/client.py:None:None error app/client.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/internal.py:None:None error app/internal.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/pkg/__init__.py:None:None error app/pkg/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/pkg/peer.py:None:None error app/pkg/peer.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/pkg/user.py:None:None error app/pkg/user.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/service.py:None:None error app/service.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/sibling.py:None:None error app/sibling.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+IDM003 app/client.py:116:1 hint review Rebinding.use as __call__ with an operation-based class name
+IDM003 app/service.py:19:1 hint review Images.retain as __call__ with an operation-based class name
+LAY004 app/service.py:20:None error fix definitions in module.Images#0 have 1 avoidable ordering inversion(s)
+LAY004 app/service.py:44:None error fix definitions in module.SessionLog#0 have 6 avoidable ordering inversion(s)
+LAY004 app/service.py:6:None error fix definitions in module have 8 avoidable ordering inversion(s)
+TST002 tests/test_private.py:1:25 error test accesses private production name app.service._normalize
+TYP006 app/client.py:49:12 hint fix 1 quoted annotation(s); the annotations future import already defers them
+TYP006 app/service.py:30:22 hint fix 1 quoted annotation(s); an annotations future import defers them
+VIS001 app/__init__.py:11:1 warning lazy is public, but has no observed use outside its module
+VIS001 app/client.py:102:5 warning Holder.use is public, but has no observed use outside its class
+VIS001 app/client.py:117:5 warning Rebinding.use is public, but has no observed use outside its class
+VIS001 app/client.py:122:1 warning nested is public, but has no observed use outside its module
+VIS001 app/client.py:129:1 warning closures is public, but has no observed use outside its module
+VIS001 app/client.py:144:1 warning comprehension is public, but has no observed use outside its module
+VIS001 app/client.py:148:1 warning star_scope is public, but has no observed use outside its module
+VIS001 app/client.py:154:1 warning rebind_import is public, but has no observed use outside its module
+VIS001 app/client.py:36:1 warning persist is public, but has no observed use outside its module
+VIS001 app/client.py:48:1 warning annotated is public, but has no observed use outside its module
+VIS001 app/client.py:57:1 warning inherited is public, but has no observed use outside its module
+VIS001 app/client.py:61:1 warning other_classes is public, but has no observed use outside its module
+VIS001 app/client.py:65:1 warning locals_flow is public, but has no observed use outside its module
+VIS001 app/client.py:85:1 warning shadowed is public, but has no observed use outside its module
+VIS001 app/client.py:90:1 warning blocked is public, but has no observed use outside its module
+VIS001 app/pkg/user.py:6:1 warning use is public, but has no observed use outside its module
+VIS001 app/service.py:74:1 warning decorate is public, but has no observed use outside its module
+VIS001 app/sibling.py:5:1 warning run is public, but has no observed use outside its module
+VIS002 app/_private_module.py:1:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS004 app/client.py:100:9 warning Holder.other is public, but has no observed access outside its class
+VIS005 app/__init__.py:12:27 warning production code accesses private module symbol app.internal._helper
+VIS005 app/__init__.py:3:22 warning production code accesses private module symbol app.service._counter
+VIS005 app/__init__.py:4:22 warning production code accesses private module symbol app.service._cache
+VIS005 app/client.py:103:9 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:104:9 warning app.client performs a private read on app.service.SessionLog._limit, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:109:16 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:113:31 warning app.client performs a private read on app.service.SessionLog._limit, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:119:16 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:124:16 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:133:16 warning production code accesses private module symbol app.service._cache
+VIS005 app/client.py:136:17 warning production code accesses private module symbol app.service._cache
+VIS005 app/client.py:139:20 warning production code accesses private module symbol app.service._normalize
+VIS005 app/client.py:145:44 warning production code accesses private module symbol app.service._cache
+VIS005 app/client.py:19:5 warning production code accesses private module symbol app.service._normalize
+VIS005 app/client.py:21:25 warning production code accesses private module symbol app.service._cache
+VIS005 app/client.py:24:23 warning production code accesses private module symbol app.internal._value
+VIS005 app/client.py:28:29 warning production code accesses private module symbol app.service._counter
+VIS005 app/client.py:30:7 warning production code accesses private module symbol app.service._cache
+VIS005 app/client.py:31:7 warning production code accesses private module symbol app.service._normalize
+VIS005 app/client.py:32:25 warning production code accesses private module symbol app.internal._helper
+VIS005 app/client.py:32:7 warning production code accesses private module symbol app.service._counter
+VIS005 app/client.py:37:5 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:38:5 warning app.client performs a private call on app.service.Images._retain, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:38:5 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:39:5 warning app.client performs a private write on app.service.SessionLog._limit, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:40:5 warning app.client performs a private update on app.service.SessionLog._count, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:41:9 warning app.client performs a private delete on app.service.SessionLog._other, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:42:5 warning app.client performs a private read on app.service.Record._secret, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:43:5 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:44:5 warning app.client performs a private read on app.service.Frozen._value, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:45:12 warning app.client performs a private read on app.service.SessionLog._view, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:54:12 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:54:27 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:54:43 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:54:58 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:58:12 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:58:27 warning app.client performs a private read on app.service.Grandchild._own, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:58:44 warning app.client performs a private read on app.service.SessionLog._limit, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:67:5 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:69:5 warning app.client performs a private read on app.service.SessionLog._limit, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:74:5 warning app.client performs a private call on app.service.Images._retain, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:74:5 warning app.client performs a private read on app.service.SessionLog._made, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:75:5 warning app.client performs a private read on app.service.SessionLog._mixed, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:76:5 warning app.client performs a private read on app.service.SessionLog._reset, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:77:5 warning app.client performs a private call on app.service.Images._retain, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:78:5 warning app.client performs a private call on app.service.Images._retain, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:79:5 warning app.client performs a private call on app.service.Images._retain, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:80:5 warning app.client performs a private call on app.service.Images._retain, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:81:5 warning app.client performs a private call on app.service.SessionLog._static, owned by app.service; expose an operation on its owner
+VIS005 app/client.py:93:12 warning app.client performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/pkg/user.py:7:12 warning app.pkg.user performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS005 app/sibling.py:1:22 warning production code accesses private module symbol app.service._normalize
+VIS005 app/sibling.py:6:29 warning production code accesses private module symbol app.service._cache
+VIS005 app/sibling.py:6:45 warning app.sibling performs a private read on app.service.SessionLog._images, owned by app.service; expose an operation on its owner
+VIS006 app/service.py:23:5 hint retain only forwards to _retain
+VIS008 app/__init__.py:3:22 warning fix use a plain import for _counter under the __all__ convention

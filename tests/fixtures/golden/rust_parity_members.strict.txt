@@ -1,0 +1,67 @@
+modules: 15, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 2, "governed": 1, "unclassified": 12, "uncovered": 0} complete=False
+ARC013 None:None:None error exclusion "scripts" has no coverage reason
+ARC013 app/all_exports.py:None:None error app/all_exports.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/constant_user.py:None:None error app/constant_user.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/constants.py:None:None error app/constants.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/dynamic.py:None:None error app/dynamic.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/exported_constants.py:None:None error app/exported_constants.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/helpers.py:None:None error app/helpers.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/modular/record.py:None:None error app/modular/record.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/reflective.py:None:None error app/reflective.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/star.py:None:None error app/star.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/starred.py:None:None error app/starred.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/static_shadow.py:None:None error app/static_shadow.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/user.py:None:None error app/user.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+CPX008 app/helpers.py:188:1 hint Name the Browser instance before calling .external()
+IDM003 app/helpers.py:148:1 hint review Base.hook as __call__ with an operation-based class name
+IDM003 app/helpers.py:165:1 hint review Exported.exported_method as __call__ with an operation-based class name
+LAY004 app/constants.py:26:None error fix definitions in module have 1 avoidable ordering inversion(s)
+LAY004 app/helpers.py:46:None error fix definitions in module have 1 avoidable ordering inversion(s)
+LAY004 app/helpers.py:64:None error fix definitions in module.Browser#0 have 39 avoidable ordering inversion(s)
+LAY005 app/helpers.py:89:5 hint Browser.normalize is an internal static helper; prefer a private module function
+LAY005 app/helpers.py:97:5 hint Browser.aliased is an internal static helper; prefer a private module function
+LAY006 app/all_exports.py:9:1 hint fix review placing unlisted before the helpers it calls
+LAY006 app/helpers.py:13:1 hint fix review placing caller before the helpers it calls
+LAY006 app/helpers.py:33:1 hint fix review placing async_internal before the helpers it calls
+LAY006 app/helpers.py:37:1 hint fix review placing run before the helpers it calls
+LAY006 app/helpers.py:74:5 hint fix review placing run before the helpers it calls
+LAY006 app/helpers.py:85:5 hint fix review placing fetch before the helpers it calls
+MOD002 app/helpers.py:148:1 error class "Base" uses the forbidden Base prefix
+TYP006 app/constants.py:22:51 hint fix 1 quoted annotation(s); an annotations future import defers them
+VIS001 app/all_exports.py:9:1 warning unlisted is public, but has no observed use outside its module
+VIS001 app/constants.py:22:1 warning public is public, but has no observed use outside its module
+VIS001 app/helpers.py:128:5 warning Browser.uses_reflection is public, but has no observed use outside its class
+VIS001 app/helpers.py:131:5 warning Browser.reflected is public, but has no observed use outside its class
+VIS001 app/helpers.py:134:5 warning Browser.collide is public, but has no observed use outside its class
+VIS001 app/helpers.py:13:1 warning caller is public, but has no observed use outside its module
+VIS001 app/helpers.py:140:5 warning Browser.nested is public, but has no observed use outside its class
+VIS001 app/helpers.py:175:5 warning Plain.read is public, but has no observed use outside its class
+VIS001 app/helpers.py:184:1 warning reads_plain is public, but has no observed use outside its module
+VIS001 app/helpers.py:33:1 warning async_internal is public, but has no observed use outside its module
+VIS001 app/helpers.py:71:5 warning Browser.emit is public, but has no observed use outside its class
+VIS001 app/helpers.py:74:5 warning Browser.run is public, but has no observed use outside its class
+VIS001 app/helpers.py:82:5 warning Browser.unused_method is public, but has no observed use outside its class
+VIS001 app/helpers.py:85:5 warning Browser.fetch is public, but has no observed use outside its class
+VIS001 app/helpers.py:9:1 warning internal_only is public, but has no observed use outside its module
+VIS001 app/modular/record.py:10:1 warning describe is public, but has no observed use outside its module
+VIS001 app/reflective.py:5:1 warning lookup is public, but has no observed use outside its module
+VIS001 app/user.py:6:1 warning use is public, but has no observed use outside its module
+VIS002 app/constants.py:4:1 warning MIN_LENGTH is public, but has no observed use outside its module or public-signature evidence
+VIS002 app/constants.py:5:1 warning MAX_LENGTH is public, but has no observed use outside its module or public-signature evidence
+VIS002 app/exported_constants.py:4:1 warning LOCAL is public, but has no observed use outside its module or public-signature evidence
+VIS003 app/all_exports.py:2:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 app/dynamic.py:2:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 app/exported_constants.py:1:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS004 app/constants.py:35:9 warning Model.extra is public, but has no observed access outside its class
+VIS004 app/helpers.py:108:5 warning Browser.limit_alias is public, but has no observed access outside its class
+VIS004 app/helpers.py:172:9 warning Plain.internal_value is public, but has no observed access outside its class
+VIS004 app/helpers.py:60:5 warning Browser.names is public, but has no observed access outside its class
+VIS004 app/modular/record.py:6:9 warning Record.name is public, but has no observed access outside its module
+VIS008 app/__init__.py:2:25 warning fix use a plain import for Exported under the __all__ convention
+VIS009 app/helpers.py:25:None warning app.helpers.tested_only is public; unused outside tests among analyzed modules
+VIS009 app/helpers.py:29:None warning app.helpers.tested_and_internal is public; among analyzed modules, only tests access it outside its defining module
+VIS009 app/helpers.py:5:None warning app.helpers.unused is public; among analyzed modules, only tests access it outside its defining module
+VIS010 app/helpers.py:59:5 warning Browser.limit is public; among analyzed modules, only tests read it outside its defining class
+VIS010 app/helpers.py:69:9 warning Browser.tested is public; among analyzed modules, only tests read it outside its defining class
+VIS010 app/modular/record.py:7:9 warning Record.size is public; among analyzed modules, only tests read it outside its defining module

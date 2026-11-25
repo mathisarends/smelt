@@ -1,0 +1,63 @@
+modules: 25, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 7, "governed": 0, "unclassified": 18, "uncovered": 0} complete=False
+ARC013 app/__init__.py:None:None error app/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/client.py:None:None error app/client.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/defined.py:None:None error app/defined.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/dynamic/__init__.py:None:None error app/dynamic/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/dynamic/inner.py:None:None error app/dynamic/inner.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/listed/__init__.py:None:None error app/listed/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/listed/inner.py:None:None error app/listed/inner.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/models.py:None:None error app/models.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/nested/deep/mod.py:None:None error app/nested/deep/mod.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/plain/mod.py:None:None error app/plain/mod.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/service.py:None:None error app/service.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/star/inner.py:None:None error app/star/inner.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/sub/checks/test_relative.py:None:None error app/sub/checks/test_relative.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/sub/deeper/mod.py:None:None error app/sub/deeper/mod.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/sub/helper.py:None:None error app/sub/helper.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/sub/impl.py:None:None error app/sub/impl.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/sub/other.py:None:None error app/sub/other.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/twice.py:None:None error app/twice.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+IMP004 app/client.py:10:1 hint fix import these names from the existing app.sub package API
+IMP004 app/client.py:23:1 hint fix import these names from the existing app.sub package API
+IMP004 app/client.py:24:1 hint fix import these names from the existing app.sub package API
+IMP004 app/client.py:27:8 hint fix import these names from the existing app.sub package API
+IMP004 app/client.py:28:1 hint fix import these names from the existing app.sub package API
+IMP004 app/client.py:31:1 hint fix import these names from the existing pydantic package API
+IMP004 app/client.py:33:1 hint fix import these names from the existing pydantic package API
+IMP004 app/client.py:34:1 hint fix import these names from the existing pydantic package API
+IMP004 app/client.py:35:1 hint fix import these names from the existing yaml package API
+IMP004 app/client.py:36:1 hint fix import these names from the existing yaml package API
+IMP004 app/client.py:44:5 hint fix import these names from the existing app.sub package API
+IMP004 app/client.py:49:5 hint fix import these names from the existing app.sub package API
+IMP004 app/client.py:54:5 hint fix import these names from the existing app.sub package API
+IMP004 app/client.py:7:1 hint fix import these names from the existing app.sub package API
+IMP004 app/client.py:8:1 hint import these names from the existing app.sub package API
+IMP004 app/client.py:9:1 hint fix import these names from the existing app.sub package API
+IMP004 app/nested/deep/mod.py:1:1 hint fix import these names from the existing app.sub package API
+IMP004 app/plain/mod.py:2:1 hint fix import these names from the existing app.sub package API
+IMP004 app/sub/checks/test_relative.py:1:1 hint fix import these names from the existing app.sub package API
+IMP004 app/sub/checks/test_relative.py:2:1 hint fix import these names from the existing app package API
+IMP004 app/sub/checks/test_relative.py:3:1 hint fix import these names from the existing app.sub package API
+IMP004 tests/Upper/test_case.py:1:1 hint fix import these names from the existing app.sub package API
+IMP004 tests/conftest.py:1:1 hint fix import these names from the existing app.sub package API
+IMP004 tests/excluded/test_excluded.py:1:1 hint fix import these names from the existing app.sub package API
+IMP004 tests/test_client.py:2:1 hint fix import these names from the existing app.sub package API
+IMP004 tests/test_client.py:3:1 hint fix import these names from the existing app package API
+IMP004 tests/test_client.py:4:1 hint fix import these names from the existing pydantic package API
+LAY004 app/__init__.py:10:None error fix definitions in module have 1 avoidable ordering inversion(s)
+LAY004 app/client.py:27:None error imports appear after later definition groups
+LAY004 app/client.py:28:None error imports appear after later definition groups
+LAY004 app/client.py:31:None error imports appear after later definition groups
+LAY004 app/client.py:32:None error imports appear after later definition groups
+LAY004 app/client.py:33:None error imports appear after later definition groups
+LAY004 app/client.py:34:None error imports appear after later definition groups
+LAY004 app/client.py:35:None error imports appear after later definition groups
+LAY004 app/client.py:36:None error imports appear after later definition groups
+LAY004 app/client.py:37:None error imports appear after later definition groups
+LAY004 app/client.py:38:None error imports appear after later definition groups
+LAY004 app/client.py:39:None error imports appear after later definition groups
+LAY004 app/client.py:40:None error imports appear after later definition groups
+VIS001 app/client.py:47:1 warning function is public, but has no observed use outside its module
+VIS005 app/__init__.py:4:21 warning production code accesses private module symbol app.models._hidden
+VIS008 app/sub/__init__.py:2:26 warning fix use a plain import for Third under the __all__ convention

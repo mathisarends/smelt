@@ -1,0 +1,26 @@
+modules: 15, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 6, "governed": 0, "unclassified": 9, "uncovered": 0} complete=False
+ARC013 single/alone.py:None:None error single/alone.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 single/sibling.py:None:None error single/sibling.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 styled/a.py:None:None error styled/a.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 styled/b.py:None:None error styled/b.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 styled/c.py:None:None error styled/c.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 styled/deep/one/two/leaf.py:None:None error styled/deep/one/two/leaf.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 styled/deep/one/two/sibling.py:None:None error styled/deep/one/two/sibling.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 styled/strict/mod.py:None:None error styled/strict/mod.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 styled/strict/other.py:None:None error styled/strict/other.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+IMP003 single/alone.py:3:1 error style expects a relative import of single.sibling
+IMP003 single/alone.py:4:1 error fix style expects a relative import of single
+IMP003 single/alone.py:5:1 error fix style expects a relative import of single.sibling
+IMP003 styled/__init__.py:1:1 error fix style expects a relative import of styled.a
+IMP003 styled/a.py:10:5 error fix style expects a relative import of styled.b
+IMP003 styled/a.py:2:1 error fix style expects a relative import of styled.b
+IMP003 styled/a.py:4:1 error style expects a relative import of styled.b
+IMP003 styled/deep/one/two/leaf.py:1:1 error fix contract "deep_part" expects a relative import of styled.deep.one.two
+IMP003 styled/deep/one/two/leaf.py:2:1 error fix contract "deep_part" expects a relative import of styled.deep.one
+IMP003 styled/deep/one/two/leaf.py:3:1 error fix contract "deep_part" expects a relative import of styled.deep
+IMP003 styled/deep/one/two/leaf.py:5:1 error fix contract "deep_part" expects an absolute import of styled
+IMP003 styled/deep/one/two/leaf.py:7:1 error contract "deep_part" expects a relative import of styled.deep.one.two.sibling
+IMP003 styled/strict/mod.py:1:1 error fix contract "absolute_part" expects an absolute import of styled.strict
+IMP003 styled/strict/mod.py:2:1 error fix contract "absolute_part" expects an absolute import of styled.strict.other
+IMP003 styled/strict/mod.py:4:1 error fix contract "absolute_part" expects an absolute import of styled.a

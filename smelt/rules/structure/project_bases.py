@@ -1,17 +1,9 @@
 from __future__ import annotations
 
-import ast
-from typing import TYPE_CHECKING
-
-from smelt.analysis.bindings import qualified_name
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.model import is_within
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
 
 
 class PreferProjectBaseClass(Rule):
@@ -71,59 +63,3 @@ class PreferProjectBaseClass(Rule):
             f"Inherit {project} instead of {outside}"
             for outside, project in sorted(contract.spec.bases.items())
         )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            contract = ctx.contracts.policy_for(source.module, "bases")
-            if contract is None or not contract.spec.bases:
-                continue
-            syntax = ctx.syntax.for_path(source.path)
-            if syntax is None:
-                continue
-            mapping = {
-                outside: project
-                for outside, project in contract.spec.bases.items()
-                if not _defines(syntax.tree, source.module, project)
-            }
-            for owner in syntax.nodes:
-                if not isinstance(owner, ast.ClassDef):
-                    continue
-                for base in owner.bases:
-                    outside = _resolve(base, syntax.bindings)
-                    if outside not in mapping:
-                        continue
-                    project = mapping[outside]
-                    yield self.violation(
-                        f"Class {owner.name} inherits {outside} directly; "
-                        f"{contract.origin} expects {project}",
-                        path=source.path,
-                        line=owner.lineno,
-                        column=owner.col_offset + 1,
-                        source_module=source.module,
-                        expected={
-                            "contract": contract.name,
-                            "class": owner.name,
-                            "outside_base": outside,
-                            "project_base": project,
-                            "automatic_rewrite": False,
-                        },
-                        hint=(
-                            f"Inherit {project.rpartition('.')[2]} from "
-                            f"{project.rpartition('.')[0]} instead of {outside}."
-                        ),
-                    )
-
-
-def _defines(tree: ast.Module, module: str, project: str) -> bool:
-    # The project base may be re-exported, so its package prefix is enough.
-    package, _, name = project.rpartition(".")
-    return is_within(module, package) and any(
-        isinstance(node, ast.ClassDef) and node.name == name for node in tree.body
-    )
-
-
-def _resolve(base: ast.expr, bindings: Mapping[str, str]) -> str | None:
-    # Generic bases such as Model[T] name their class before the subscript.
-    if isinstance(base, ast.Subscript):
-        base = base.value
-    return qualified_name(base, bindings)

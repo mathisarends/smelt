@@ -1,1 +1,1 @@
-"""Edge cases for comparing the Rust core with the Python engine."""
+"""Edge cases whose findings the golden reports keep."""

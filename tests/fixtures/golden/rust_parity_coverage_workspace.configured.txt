@@ -1,0 +1,10 @@
+modules: 9, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 3, "governed": 2, "unclassified": 4, "uncovered": 4} complete=False
+ARC013 libs/core/src/core/domain/__init__.py:None:None error member=libs/core libs/core/src/core/domain/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 libs/core/src/core/loose.py:None:None error member=libs/core libs/core/src/core/loose.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 libs/flat/flat/__init__.py:None:None error member=libs/flat libs/flat/flat/__init__.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 libs/flat/flat/module.py:None:None error member=libs/flat libs/flat/flat/module.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 libs/ignored/src/ignored/__init__.py:None:None error member=. libs/ignored/src/ignored/__init__.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 libs/scripts/run.py:None:None error member=libs/scripts libs/scripts/run.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 src/app/loose.py:None:None error member=. src/app/loose.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 tools/cli/src/cli/main.py:None:None error member=tools/cli tools/cli/src/cli/main.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.

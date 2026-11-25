@@ -1,0 +1,7 @@
+modules: 14, suppressed: 1, in debt: 0
+coverage: {"excluded": 0, "facade": 0, "governed": 3, "unclassified": 11, "uncovered": 0} complete=False
+TST012 shop/async_job.py:1:None warning shop.async_job has no test at its mirrored path tests/test_async_job.py
+TST012 shop/formatted.py:1:None warning shop.formatted has no test at its mirrored path tests/test_formatted.py
+TST012 shop/method.py:1:None warning shop.method has no test at its mirrored path tests/test_method.py
+TST012 shop/nested.py:1:None warning shop.nested has no test at its mirrored path tests/test_nested.py
+TST012 shop/untested.py:1:None warning shop.untested has no test at its mirrored path tests/test_untested.py

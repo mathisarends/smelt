@@ -1,14 +1,6 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.enum_values import str_enum_value_accesses
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class RedundantStrEnumValue(Rule):
@@ -26,23 +18,3 @@ class RedundantStrEnumValue(Rule):
         canonical="Use a StrEnum member directly instead of its .value",
         config=("rules",),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for access in str_enum_value_accesses(ctx.syntax):
-            replacement = access.replacement
-            yield self.violation(
-                f"consider {replacement} directly; StrEnum members are already strings",
-                path=access.path,
-                line=access.line,
-                column=access.column,
-                end_line=access.end_line,
-                end_column=access.end_column,
-                source_module=access.module,
-                expected={
-                    "enum": access.enum,
-                    "member": access.member,
-                    "replacement": replacement,
-                    "automatic_rewrite": False,
-                },
-                hint=f"Use {replacement} if the consumer accepts string subclasses; retain an explicit conversion when it requires an exact str.",
-            )

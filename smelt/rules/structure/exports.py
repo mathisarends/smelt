@@ -1,16 +1,6 @@
-from __future__ import annotations
-
-import ast
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.function_usage import explicit_exports
-from smelt.analysis.parsing import child_nodes
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class PackageOnlyDunderAll(Rule):
@@ -28,39 +18,6 @@ class PackageOnlyDunderAll(Rule):
         canonical="Declare __all__ only in package __init__.py files",
         config=("rules", "style.overrides"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            if source.is_package:
-                continue
-            seen: set[int] = set()
-            for node in _module_nodes(ctx.asts.parse(source.path)):
-                if not isinstance(node, ast.Name | ast.alias):
-                    continue
-                binding = (
-                    isinstance(node, ast.Name)
-                    and isinstance(node.ctx, ast.Store)
-                    and node.id == "__all__"
-                )
-                imported = (
-                    isinstance(node, ast.alias)
-                    and (node.asname or node.name) == "__all__"
-                )
-                if not (binding or imported) or node.lineno in seen:
-                    continue
-                seen.add(node.lineno)
-                yield self.violation(
-                    "declare __all__ in __init__.py instead of an ordinary module",
-                    path=source.path,
-                    line=node.lineno,
-                    column=node.col_offset + 1,
-                    source_module=source.module,
-                    expected={
-                        "allowed_filename": "__init__.py",
-                        "automatic_removal": False,
-                    },
-                    hint="Review moving the package export declaration to __init__.py; preserve star-import compatibility and check facade cycles.",
-                )
 
 
 class ReexportOnlyModule(Rule):
@@ -96,85 +53,4 @@ class ReexportOnlyModule(Rule):
             "re-export-only modules"
         ),
         config=("rules", "style.overrides"),
-    )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            if source.is_package:
-                continue
-            bindings = _reexport_bindings(ctx.asts.parse(source.path))
-            if not bindings:
-                continue
-            first = next(iter(bindings.values()))
-            yield self.violation(
-                f"{source.module} only re-exports imported names",
-                path=source.path,
-                line=first.lineno,
-                column=first.col_offset + 1,
-                source_module=source.module,
-                expected={"reexported_names": sorted(bindings)},
-                hint="Review using the defining module or package API directly. Preserve supported import paths with a reasoned exception.",
-            )
-
-
-def _module_nodes(node: ast.AST) -> Iterator[ast.AST]:
-    if isinstance(
-        node,
-        ast.FunctionDef
-        | ast.AsyncFunctionDef
-        | ast.ClassDef
-        | ast.Lambda
-        | ast.ListComp
-        | ast.SetComp
-        | ast.DictComp
-        | ast.GeneratorExp,
-    ):
-        return
-    yield node
-    for child in child_nodes(node):
-        yield from _module_nodes(child)
-
-
-def _reexport_bindings(tree: ast.Module) -> dict[str, ast.alias]:
-    body = (
-        tree.body[1:] if ast.get_docstring(tree, clean=False) is not None else tree.body
-    )
-    bindings: dict[str, ast.alias] = {}
-    declares_all = False
-    for node in body:
-        if (
-            isinstance(node, ast.ImportFrom)
-            and node.level == 0
-            and node.module == "__future__"
-        ):
-            continue
-        if not declares_all and _literal_export_assignment(node):
-            declares_all = True
-            continue
-        if not isinstance(node, ast.Import | ast.ImportFrom):
-            return {}
-        for alias in node.names:
-            name = alias.asname or alias.name.partition(".")[0]
-            if (
-                alias.name == "*"
-                or name in bindings
-                or name in {"__all__", "__getattr__", "__dir__"}
-            ):
-                return {}
-            bindings[name] = alias
-    explicit = (
-        bindings.keys() == explicit_exports(tree)
-        if declares_all
-        else all(alias.asname == alias.name for alias in bindings.values())
-    )
-    return bindings if explicit else {}
-
-
-def _literal_export_assignment(node: ast.stmt) -> bool:
-    return (
-        isinstance(node, ast.Assign)
-        and len(node.targets) == 1
-        and isinstance(node.targets[0], ast.Name)
-        and node.targets[0].id == "__all__"
-        and isinstance(node.value, ast.List | ast.Tuple)
     )

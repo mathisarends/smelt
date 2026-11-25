@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
-from smelt.config.errors import ConfigError, ConfigIssue
 from smelt.config.models import POLICY_DEFAULTS, POLICY_OPTIONS, PackageContract
 from smelt.config.patterns import module_matches
 from smelt.model import is_within
@@ -85,36 +84,6 @@ class ContractIndex:
             if module_matches(spec.match, package)
         )
         self.project = _project_policy(files.config.structure)
-
-    def facade_policies(
-        self, policy: Literal["min_imports_to_bundle", "min_importers_to_export"]
-    ) -> tuple[ResolvedContract, ...]:
-        """One threshold per concrete package; more literal match segments win."""
-        candidates: dict[str, list[ResolvedContract]] = {}
-        for contract in self.resolved:
-            if getattr(contract.spec, policy) is not None:
-                candidates.setdefault(contract.package, []).append(contract)
-        chosen: list[ResolvedContract] = []
-        for package, matches in sorted(candidates.items()):
-            rank = min(c.spec.match.split(".").count("*") for c in matches)
-            winners = [c for c in matches if c.spec.match.split(".").count("*") == rank]
-            first = winners[0]
-            for other in winners[1:]:
-                if getattr(first.spec, policy) != getattr(other.spec, policy) or (
-                    policy == "min_importers_to_export"
-                    and first.spec.count_tests != other.spec.count_tests
-                ):
-                    raise ConfigError(
-                        [
-                            ConfigIssue(
-                                f"architecture.packages.{other.name}.{policy}",
-                                f"conflicting {policy} policies for {package} with equally specific matches",
-                            )
-                        ],
-                        "smelt configuration",
-                    )
-            chosen.append(first)
-        return tuple(chosen)
 
     def header_brief(self, module: str | None) -> dict[str, Any]:
         policies: dict[str, Any] = {}
@@ -218,33 +187,33 @@ class ContractIndex:
             return self.project
         return closest
 
-    def missing(self, contract: ResolvedContract) -> list[str]:
-        return [
-            contract.qualify(entry)
-            for entry in contract.spec.required
-            if contract.qualify(entry) not in self._known
-        ]
-
-    def missing_public(self, contract: ResolvedContract) -> list[str]:
-        return [
-            pattern
-            for pattern in contract.public or ()
-            if not any(module_matches(pattern, module) for module in self._known)
-        ]
-
     def describe(self, module: str | None = None) -> list[dict[str, Any]]:
         """Contracts containing a target, or below a package/project target."""
         return [
             describe_contract(
                 contract,
-                missing=self.missing(contract),
-                missing_public=self.missing_public(contract),
+                missing=self._missing(contract),
+                missing_public=self._missing_public(contract),
                 module=module,
             )
             for contract in self.resolved
             if module is None
             or is_within(module, contract.package)
             or is_within(contract.package, module)
+        ]
+
+    def _missing(self, contract: ResolvedContract) -> list[str]:
+        return [
+            contract.qualify(entry)
+            for entry in contract.spec.required
+            if contract.qualify(entry) not in self._known
+        ]
+
+    def _missing_public(self, contract: ResolvedContract) -> list[str]:
+        return [
+            pattern
+            for pattern in contract.public or ()
+            if not any(module_matches(pattern, module) for module in self._known)
         ]
 
 

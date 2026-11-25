@@ -1,0 +1,29 @@
+modules: 56, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 13, "governed": 21, "unclassified": 22, "uncovered": 0} complete=False
+ARC001 core/kernel/inner_copy.py:3:33 error kernel must not depend on web
+ARC006 extras/boot_copy.py:1:23 error extras.boot_copy must not import the composition root core.boot
+ARC013 core/boot_copy.py:None:None error core/boot_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/literal_a.py:None:None error core/literal_a.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/loose.py:None:None error core/loose.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/loose_copy.py:None:None error core/loose_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/twin.py:None:None error core/twin.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/twin_copy.py:None:None error core/twin_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/unknown/piece.py:None:None error core/unknown/piece.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/web/__init___copy.py:None:None error core/web/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 core/web/other/__init___copy.py:None:None error core/web/other/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 extras/boot_copy.py:None:None error extras/boot_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 extras/kernel/shallow.py:None:None error extras/kernel/shallow.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 extras/kernel/shallow_copy.py:None:None error extras/kernel/shallow_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 extras/literal_b.py:None:None error extras/literal_b.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 extras/loose.py:None:None error extras/loose.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 extras/twin.py:None:None error extras/twin.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 extras/web/__init___copy.py:None:None error extras/web/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 plain/__init___copy.py:None:None error plain/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 plain/deep/leaf.py:None:None error plain/deep/leaf.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 plain/mod.py:None:None error plain/mod.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 plain/mod_copy.py:None:None error plain/mod_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 wired/a/providers_copy.py:None:None error wired/a/providers_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 wired/b/sub/__init___copy.py:None:None error wired/b/sub/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+CPX004 core/twin.py:1:1 warning Function repeated repeats repeated in core/twin_copy.py
+CPX004 core/twin_copy.py:1:1 warning Function repeated repeats repeated in core/twin.py
+VIS001 core/twin_copy.py:1:1 warning repeated is public, but has no observed use outside its module

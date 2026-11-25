@@ -1,0 +1,59 @@
+modules: 54, suppressed: 0, in debt: 0
+coverage: {"excluded": 3, "facade": 19, "governed": 6, "unclassified": 29, "uncovered": 8} complete=False
+ARC011 src/shop/checks:None:None error shop contains package checks, which is not a declared layer (domain, application, platform)
+ARC011 src/shop/facades/__init__.py:None:None error shop contains package facades, which is not a declared layer (domain, application, platform)
+ARC011 src/shop/legacy:None:None error shop contains package legacy, which is not a declared layer (domain, application, platform)
+ARC011 src/shop/orders/__init__.py:None:None error shop contains package orders, which is not a declared layer (domain, application, platform)
+ARC011 src/shop/vendor:None:None error shop contains package vendor, which is not a declared layer (domain, application, platform)
+ARC013 None:None:None error exclusion "src/shop/legacy/**" has no coverage reason
+ARC013 extra/9lives/module.py:None:None error extra/9lives/module.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 extra/tool.py:None:None error extra/tool.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 scripts/outside.py:None:None error scripts/outside.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 src/other/__init__.py:None:None error src/other/__init__.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 src/other/dotted.name.py:None:None error src/other/dotted.name.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 src/other/module.py:None:None error src/other/module.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 src/other/not-a-module.py:None:None error src/other/not-a-module.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 src/shop/checks/test_shop.py:None:None error src/shop/checks/test_shop.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/attribute_target/__init__.py:None:None error src/shop/facades/attribute_target/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/bare_annotation/__init__.py:None:None error src/shop/facades/bare_annotation/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/bool_negative/__init__.py:None:None error src/shop/facades/bool_negative/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/bytes_doc/__init__.py:None:None error src/shop/facades/bytes_doc/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/call/__init__.py:None:None error src/shop/facades/call/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/complex_left/__init__.py:None:None error src/shop/facades/complex_left/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/concat/__init__.py:None:None error src/shop/facades/concat/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/double_negative/__init__.py:None:None error src/shop/facades/double_negative/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/elif_other/__init__.py:None:None error src/shop/facades/elif_other/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/fstring/__init__.py:None:None error src/shop/facades/fstring/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/function/__init__.py:None:None error src/shop/facades/function/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/if_other/__init__.py:None:None error src/shop/facades/if_other/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/negated/__init__.py:None:None error src/shop/facades/negated/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/other_name/__init__.py:None:None error src/shop/facades/other_name/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/spread/__init__.py:None:None error src/shop/facades/spread/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/star_handler/__init__.py:None:None error src/shop/facades/star_handler/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/starred/__init__.py:None:None error src/shop/facades/starred/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/tuple_handler/__init__.py:None:None error src/shop/facades/tuple_handler/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/unhashable_key/__init__.py:None:None error src/shop/facades/unhashable_key/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/unhashable_set/__init__.py:None:None error src/shop/facades/unhashable_set/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/unhashable_tuple/__init__.py:None:None error src/shop/facades/unhashable_tuple/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/version_all/__init__.py:None:None error src/shop/facades/version_all/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/version_kwargs/__init__.py:None:None error src/shop/facades/version_kwargs/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/version_unknown/__init__.py:None:None error src/shop/facades/version_unknown/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/orders/application/__init__.py:None:None error src/shop/orders/application/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/orders/domain/order.py:None:None error src/shop/orders/domain/order.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/orders/helpers.py:None:None error src/shop/orders/helpers.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/orders/tests/test_orders.py:None:None error src/shop/orders/tests/test_orders.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/standalone.py:None:None error src/standalone.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+IDM006 src/shop/facades/bare_except/__init__.py:3:1 hint Bare except does not say why it catches every failure
+LAY009 src/shop/checks/test_shop.py:None:None hint module name "test_shop" repeats "shop" from package "shop"
+LAY009 src/shop/orders/tests/test_orders.py:None:None hint module name "test_orders" repeats "test" from package "shop.orders.tests"
+MET001 src/shop/orders/helpers.py:2:15 warning fix unused suppression (all codes)
+MET002 src/shop/orders/helpers.py:2:15 error suppression without a reason
+TST006 tests/test_root.py:1:None warning test_root has no recognized outcome assertion
+VIS001 src/shop/checks/test_shop.py:1:1 warning test_shop is public, but has no observed use outside its module
+VIS001 src/shop/facades/function/__init__.py:1:1 warning build is public, but has no observed use outside its module
+VIS001 src/shop/orders/application/__init__.py:1:1 warning place is public, but has no observed use outside its module
+VIS001 src/shop/orders/helpers.py:1:1 warning helper is public, but has no observed use outside its module
+VIS001 src/shop/orders/tests/test_orders.py:1:1 warning test_orders is public, but has no observed use outside its module
+VIS001 src/shop/wiring.py:1:1 warning wire is public, but has no observed use outside its module
+VIS002 src/shop/platform/auth.py:1:1 warning X is public, but has no observed use outside its module or public-signature evidence
+VIS002 src/shop/shared/money.py:1:1 warning X is public, but has no observed use outside its module or public-signature evidence

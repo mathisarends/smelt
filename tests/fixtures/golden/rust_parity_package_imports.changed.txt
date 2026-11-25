@@ -1,0 +1,57 @@
+modules: 30, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 7, "governed": 0, "unclassified": 23, "uncovered": 0} complete=False
+CPX004 app/client.py:47:1 warning Function function repeats function in app/client_copy.py
+CPX004 app/client_copy.py:47:1 warning Function function repeats function in app/client.py
+IMP004 app/client_copy.py:10:1 hint fix import these names from the existing app.sub package API
+IMP004 app/client_copy.py:23:1 hint fix import these names from the existing app.sub package API
+IMP004 app/client_copy.py:24:1 hint fix import these names from the existing app.sub package API
+IMP004 app/client_copy.py:27:8 hint fix import these names from the existing app.sub package API
+IMP004 app/client_copy.py:28:1 hint fix import these names from the existing app.sub package API
+IMP004 app/client_copy.py:31:1 hint fix import these names from the existing pydantic package API
+IMP004 app/client_copy.py:33:1 hint fix import these names from the existing pydantic package API
+IMP004 app/client_copy.py:34:1 hint fix import these names from the existing pydantic package API
+IMP004 app/client_copy.py:35:1 hint fix import these names from the existing yaml package API
+IMP004 app/client_copy.py:36:1 hint fix import these names from the existing yaml package API
+IMP004 app/client_copy.py:44:5 hint fix import these names from the existing app.sub package API
+IMP004 app/client_copy.py:49:5 hint fix import these names from the existing app.sub package API
+IMP004 app/client_copy.py:54:5 hint fix import these names from the existing app.sub package API
+IMP004 app/client_copy.py:7:1 hint fix import these names from the existing app.sub package API
+IMP004 app/client_copy.py:8:1 hint import these names from the existing app.sub package API
+IMP004 app/client_copy.py:9:1 hint fix import these names from the existing app.sub package API
+IMP004 app/nested/deep/mod_copy.py:1:1 hint fix import these names from the existing app.sub package API
+IMP004 tests/Upper/test_case_copy.py:1:1 hint fix import these names from the existing app.sub package API
+LAY004 app/__init__.py:15:None error imports appear after later definition groups
+LAY004 app/client_copy.py:27:None error imports appear after later definition groups
+LAY004 app/client_copy.py:28:None error imports appear after later definition groups
+LAY004 app/client_copy.py:31:None error imports appear after later definition groups
+LAY004 app/client_copy.py:32:None error imports appear after later definition groups
+LAY004 app/client_copy.py:33:None error imports appear after later definition groups
+LAY004 app/client_copy.py:34:None error imports appear after later definition groups
+LAY004 app/client_copy.py:35:None error imports appear after later definition groups
+LAY004 app/client_copy.py:36:None error imports appear after later definition groups
+LAY004 app/client_copy.py:37:None error imports appear after later definition groups
+LAY004 app/client_copy.py:38:None error imports appear after later definition groups
+LAY004 app/client_copy.py:39:None error imports appear after later definition groups
+LAY004 app/client_copy.py:40:None error imports appear after later definition groups
+LAY004 app/dynamic/__init__.py:7:None error imports appear after later definition groups
+LAY004 app/listed/inner.py:4:None error imports appear after later definition groups
+LAY004 app/star/inner.py:4:None error imports appear after later definition groups
+LAY004 app/twice.py:4:None error imports appear after later definition groups
+MOD009 app/dynamic/inner.py:1:1 warning Class Hidden is also defined in app.dynamic.inner_copy:1
+MOD009 app/dynamic/inner_copy.py:1:1 warning Class Hidden is also defined in app.dynamic.inner:1
+MOD009 app/models.py:1:1 warning Class Record is also defined in app.models_copy:1
+MOD009 app/models.py:2:1 warning Class Other is also defined in app.models_copy:2
+MOD009 app/models.py:3:1 warning Class Unlisted is also defined in app.models_copy:3
+MOD009 app/models_copy.py:1:1 warning Class Record is also defined in app.models:1
+MOD009 app/models_copy.py:2:1 warning Class Other is also defined in app.models:2
+MOD009 app/models_copy.py:3:1 warning Class Unlisted is also defined in app.models:3
+MOD009 app/sub/impl.py:1:1 warning Class Thing is also defined in app.sub.impl_copy:1
+MOD009 app/sub/impl.py:2:1 warning Class Second is also defined in app.sub.impl_copy:2
+MOD009 app/sub/impl.py:3:1 warning Class Third is also defined in app.sub.impl_copy:3
+MOD009 app/sub/impl.py:4:1 warning Class Private is also defined in app.sub.impl_copy:4
+MOD009 app/sub/impl_copy.py:1:1 warning Class Thing is also defined in app.sub.impl:1
+MOD009 app/sub/impl_copy.py:2:1 warning Class Second is also defined in app.sub.impl:2
+MOD009 app/sub/impl_copy.py:3:1 warning Class Third is also defined in app.sub.impl:3
+MOD009 app/sub/impl_copy.py:4:1 warning Class Private is also defined in app.sub.impl:4
+VIS001 app/client_copy.py:47:1 warning function is public, but has no observed use outside its module
+VIS001 app/service_copy.py:1:1 warning run is public, but has no observed use outside its module

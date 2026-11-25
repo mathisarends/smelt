@@ -1,0 +1,25 @@
+modules: 32, suppressed: 0, in debt: 0
+coverage: {"excluded": 1, "facade": 10, "governed": 11, "unclassified": 11, "uncovered": 0} complete=False
+ARC002 libs/core/src/core/features/one/__init___copy.py:1:31 error member=libs/core feature one must not import feature two ((feature root) -> (feature root))
+ARC005 src/app/shared/__init___copy.py:1:40 error member=. shared module app.shared.__init___copy must not import feature orders
+ARC010 libs/tools/src/tools/__init___copy.py:1:25 error member=libs/tools member libs/tools imports libs/core without a declared dependency on core
+ARC010 libs/tools/src/tools/__init___copy.py:2:22 error member=libs/tools member libs/tools imports . without a declared dependency on root
+ARC011 libs/core/src/core/features/one/__init___copy.py:None:None error member=libs/core one contains module __init___copy.py, which is in no layer (domain, application)
+ARC011 libs/core/src/core/features/one/legacy_copy.py:None:None error member=libs/core one contains module legacy_copy.py, which is in no layer (domain, application)
+ARC011 src/app/features/billing/__init___copy.py:None:None error member=. billing contains module __init___copy.py, which is in no layer (domain, application)
+ARC011 src/app/features/orders/__init___copy.py:None:None error member=. orders contains module __init___copy.py, which is in no layer (domain, application)
+ARC012 libs/core/src/core/application/__init___copy.py:None:None hint member=libs/core core.application.__init___copy is not part of a feature, layer, shared or composition root
+ARC012 libs/core/src/core/generated_copy.py:None:None hint member=libs/core core.generated_copy is not part of a feature, layer, shared or composition root
+CPX003 libs/core/src/core/features/one/legacy_copy.py:1:1 warning fix member=libs/core legacy accepts 3 positional parameters; style allows 2
+CPX003 src/app/features/orders/domain/order_copy.py:1:1 warning fix member=. order accepts 3 positional parameters; style allows 2
+CPX005 src/app/features/orders/domain/order_copy.py:2:12 hint member=. This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+LAY004 libs/core/src/core/features/one/domain/model.py:5:None error member=libs/core imports appear after later definition groups
+LAY004 src/app/features/billing/stray.py:4:None error member=. imports appear after later definition groups
+LAY004 src/app/features/orders/domain/__init__.py:9:None error member=. imports appear after later definition groups
+LAY009 src/app/features/orders/domain/order_copy.py:None:None hint member=. module name "order_copy" repeats "order" from package "app.features.orders"
+TST002 libs/tools/tests/test_a_copy.py:1:21 warning member=libs/tools test accesses private production name tools.a._hidden
+VIS001 libs/core/src/core/application/__init___copy.py:4:1 warning member=libs/core go is public, but has no observed use outside its module
+VIS001 libs/core/src/core/features/one/legacy.py:1:1 warning member=libs/core legacy is public, but has no observed use outside its module
+VIS001 libs/core/src/core/features/one/legacy_copy.py:1:1 warning member=libs/core legacy is public, but has no observed use outside its module
+VIS001 src/app/features/orders/domain/order_copy.py:1:1 warning member=. order is public, but has no observed use outside its module
+VIS002 libs/core/src/core/generated_copy.py:1:1 warning member=libs/core GENERATED is public, but has no observed use outside its module or public-signature evidence

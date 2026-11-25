@@ -1,26 +1,9 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.none_default_rewrite import rewrite_none_defaults
-from smelt.analysis.none_defaults import none_defaults
-from smelt.analysis.parsing import AnalysisError
+from smelt.analysis.context import Index
 from smelt.diagnostics.fixes import (
-    Applicability,
-    Fix,
     FixAvailability,
-    TextEdit,
-    TextSpan,
-    source_offset,
 )
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-    from smelt.analysis.none_defaults import NoneDefault
 
 
 class ImplicitOptionalDefault(Rule):
@@ -41,48 +24,4 @@ class ImplicitOptionalDefault(Rule):
             "before falling back"
         ),
         config=("rules", "style.overrides"),
-    )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            syntax = ctx.syntax.for_path(source.path)
-            if syntax is None:
-                continue
-            text = ctx.files.read_text(source.path)
-            for candidate in none_defaults(syntax.tree, syntax.bindings):
-                node = candidate.node
-                yield self.violation(
-                    f"optional parameter {candidate.parameter!r} uses truthiness for its default",
-                    path=source.path,
-                    line=node.lineno,
-                    column=node.col_offset + 1,
-                    end_line=node.end_lineno,
-                    end_column=(node.end_col_offset or 0) + 1,
-                    source_module=source.module,
-                    expected={
-                        "parameter": candidate.parameter,
-                        "scope": candidate.scope,
-                        "fix_safety": "unsafe",
-                    },
-                    hint="Use an explicit is not None conditional if only None should select the fallback; review intentional falsy defaults.",
-                    fix=_fix(text, candidate),
-                )
-
-
-def _fix(text: str, candidate: NoneDefault) -> Fix | None:
-    """Unsafe: falsy values stop selecting the fallback and __bool__ no longer runs."""
-    node = candidate.node
-    try:
-        rewritten = rewrite_none_defaults(text, [candidate])
-    except AnalysisError:
-        # Comments or continuations inside the expression need a human edit.
-        return None
-    span = TextSpan(
-        source_offset(text, node.lineno, node.col_offset),
-        source_offset(text, node.end_lineno or node.lineno, node.end_col_offset or 0),
-    )
-    return Fix(
-        Applicability.UNSAFE,
-        f"Select the fallback only when {candidate.parameter!r} is None",
-        (TextEdit.between(text, rewritten, span=span),),
     )

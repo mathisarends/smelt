@@ -1,0 +1,66 @@
+modules: 6, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 1, "governed": 0, "unclassified": 5, "uncovered": 0} complete=False
+ARC013 app/client.py:None:None error app/client.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/client_copy.py:None:None error app/client_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/models.py:None:None error app/models.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/plain/__init__.py:None:None error app/plain/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/plain/__init___copy.py:None:None error app/plain/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+CPX001 app/client_copy.py:100:9 hint review method call through self.generic.client; it traverses 2 instance attributes
+CPX001 app/client_copy.py:101:9 hint review method call through self.twice.path; it traverses 2 instance attributes
+CPX001 app/client_copy.py:104:9 hint review method call through self.counter.real; it traverses 2 instance attributes
+CPX001 app/client_copy.py:105:9 hint review method call through self.dynamic.part; it traverses 2 instance attributes
+CPX001 app/client_copy.py:106:9 hint review method call through self.loop.value; it traverses 2 instance attributes
+CPX001 app/client_copy.py:111:9 hint review method call through self.browser.input; it traverses 2 instance attributes
+CPX001 app/client_copy.py:113:9 hint review method call through self.a.b.c.d; it traverses 4 instance attributes
+CPX001 app/client_copy.py:120:15 hint review method call through self.a.b; it traverses 2 instance attributes
+CPX001 app/client_copy.py:120:33 hint review method call through self.d.e; it traverses 2 instance attributes
+CPX001 app/client_copy.py:121:20 hint review method call through self.d.e; it traverses 2 instance attributes
+CPX001 app/client_copy.py:121:9 hint review method call through self.a.b; it traverses 2 instance attributes
+CPX001 app/client_copy.py:122:9 hint review method call through self.a.b; it traverses 2 instance attributes
+CPX001 app/client_copy.py:125:19 hint review method call through self.x.y; it traverses 2 instance attributes
+CPX001 app/client_copy.py:161:9 hint review method call through this.settings.service; it traverses 2 instance attributes
+CPX001 app/client_copy.py:164:15 hint review method call through self.a.b; it traverses 2 instance attributes
+CPX001 app/client_copy.py:173:13 hint review method call through self.a.b; it traverses 2 instance attributes
+CPX001 app/client_copy.py:184:9 hint review method call through self.service.client; it traverses 2 instance attributes
+CPX001 app/client_copy.py:66:9 hint review method call through self.settings.service; it traverses 2 instance attributes
+CPX001 app/client_copy.py:69:9 hint review method call through self.settings.spaced.root; it traverses 3 instance attributes
+CPX001 app/client_copy.py:74:9 hint review method call through self.settings.either; it traverses 2 instance attributes
+CPX001 app/client_copy.py:76:9 hint review method call through self.settings.missing; it traverses 2 instance attributes
+CPX001 app/client_copy.py:80:9 hint review method call through self.space.service; it traverses 2 instance attributes
+CPX001 app/client_copy.py:81:9 hint review method call through self.space.unknown; it traverses 2 instance attributes
+CPX001 app/client_copy.py:82:9 hint review method call through self.spread.path; it traverses 2 instance attributes
+CPX001 app/client_copy.py:87:9 hint review method call through self.models.Settings; it traverses 2 instance attributes
+CPX001 app/client_copy.py:89:9 hint review method call through self.proc.args; it traverses 2 instance attributes
+CPX001 app/client_copy.py:91:9 hint review method call through self.service.client; it traverses 2 instance attributes
+CPX001 app/client_copy.py:92:9 hint review method call through self.name.part; it traverses 2 instance attributes
+CPX001 app/client_copy.py:98:9 hint review method call through self.made.client; it traverses 2 instance attributes
+CPX001 app/client_copy.py:99:9 hint review method call through self.built.client; it traverses 2 instance attributes
+CPX001 app/plain/__init___copy.py:8:9 hint review method call through self.sdk.api; it traverses 2 instance attributes
+CPX004 app/client.py:170:1 warning Function factory repeats factory in app/client_copy.py
+CPX004 app/client_copy.py:170:1 warning Function factory repeats factory in app/client.py
+IDM003 app/client_copy.py:171:5 hint review Local.go as __call__ with an operation-based class name
+IDM003 app/client_copy.py:178:1 hint review Shadowed.use as __call__ with an operation-based class name
+LAY004 app/client_copy.py:64:None error fix definitions in module.Controller#0 have 4 avoidable ordering inversion(s)
+LAY005 app/client_copy.py:128:5 hint Controller.static is an internal static helper; prefer a private module function
+MOD009 app/client.py:178:1 warning Class Shadowed is also defined in app.client_copy:178
+MOD009 app/client.py:17:1 warning Class Controller is also defined in app.client_copy:17
+MOD009 app/client.py:187:1 warning Class Annotated is also defined in app.client_copy:187
+MOD009 app/client_copy.py:178:1 warning Class Shadowed is also defined in app.client:178
+MOD009 app/client_copy.py:17:1 warning Class Controller is also defined in app.client:17
+MOD009 app/client_copy.py:187:1 warning Class Annotated is also defined in app.client:187
+MOD009 app/plain/__init__.py:4:1 warning Class Plain is also defined in app.plain.__init___copy:4
+MOD009 app/plain/__init___copy.py:4:1 warning Class Plain is also defined in app.plain:4
+TYP006 app/client_copy.py:26:70 hint fix 1 quoted annotation(s); an annotations future import defers them
+VIS001 app/client_copy.py:131:5 warning Controller.rebinds is public, but has no observed use outside its class
+VIS001 app/client_copy.py:135:5 warning Controller.rebinds_import is public, but has no observed use outside its class
+VIS001 app/client_copy.py:142:5 warning Controller.walrus is public, but has no observed use outside its class
+VIS001 app/client_copy.py:147:5 warning Controller.except_bind is public, but has no observed use outside its class
+VIS001 app/client_copy.py:154:5 warning Controller.match_bind is public, but has no observed use outside its class
+VIS001 app/client_copy.py:160:5 warning Controller.other_receiver is public, but has no observed use outside its class
+VIS001 app/client_copy.py:163:5 warning Controller.asynchronous is public, but has no observed use outside its class
+VIS001 app/client_copy.py:183:5 warning Shadowed.use is public, but has no observed use outside its class
+VIS001 app/client_copy.py:188:5 warning Annotated.setup is public, but has no observed use outside its class
+VIS001 app/client_copy.py:191:5 warning Annotated.use is public, but has no observed use outside its class
+VIS001 app/client_copy.py:52:5 warning Controller.reset is public, but has no observed use outside its class
+VIS001 app/client_copy.py:64:5 warning Controller.use is public, but has no observed use outside its class
+VIS001 app/plain/__init___copy.py:7:5 warning Plain.use is public, but has no observed use outside its class
