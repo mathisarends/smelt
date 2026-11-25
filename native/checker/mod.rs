@@ -6,7 +6,6 @@ mod contracts;
 mod coverage_report;
 mod facade_coverage;
 mod files;
-mod import_report;
 mod meta;
 mod patterns;
 mod renames;
@@ -123,41 +122,6 @@ struct Outcome {
     files: Value,
 }
 
-/// Check the project of `config` with the comma-separated rules and print JSON.
-pub fn serve(config: &Path, select: &str) -> i32 {
-    let options = Options {
-        config: config.to_path_buf(),
-        select: select.split(',').map(str::to_owned).collect(),
-        ignore: Vec::new(),
-        strict_coverage: false,
-        configuration_findings: true,
-        index: None,
-        baseline: None,
-        search_path: None,
-    };
-    let unported: Vec<&str> = options
-        .select
-        .iter()
-        .map(String::as_str)
-        .filter(|code| !rules::PORTED.contains(code))
-        .collect();
-    let result = if unported.is_empty() {
-        run(options).map_err(Failure::into_message)
-    } else {
-        Err(format!("rules not ported: {}", unported.join(", ")))
-    };
-    let output = result.map(|outcome| {
-        json!({"violations": outcome.violations, "suppressed": outcome.suppressed}).to_string()
-    });
-    match output.and_then(|output| write_output(&output)) {
-        Ok(()) => 0,
-        Err(message) => {
-            eprintln!("smelt core: {message}");
-            2
-        }
-    }
-}
-
 /// Run the check that stdin requests as JSON `Options` and print its outcome.
 ///
 /// An error prints `{"error": message}` and exits 2, so the engine can raise it.
@@ -271,17 +235,6 @@ pub fn serve_config(path: &Path) -> i32 {
     }
 }
 
-/// Print the resolved import graph of `config` as JSON.
-pub fn serve_imports(config: &Path) -> i32 {
-    match import_report::run(config).and_then(|text| write_output(&text)) {
-        Ok(()) => 0,
-        Err(message) => {
-            eprintln!("smelt core: {message}");
-            2
-        }
-    }
-}
-
 fn write_output(output: &str) -> Result<(), String> {
     let mut stdout = io::stdout().lock();
     stdout
@@ -295,15 +248,6 @@ enum Failure {
     /// A configuration the user must fix, reported with its issues.
     Config(ConfigError),
     Message(String),
-}
-
-impl Failure {
-    fn into_message(self) -> String {
-        match self {
-            Self::Config(error) => error.render(),
-            Self::Message(message) => message,
-        }
-    }
 }
 
 impl From<String> for Failure {
