@@ -106,12 +106,6 @@ def catalog_status(rule: RuleContract) -> RuleStatus:
 
 
 @dataclass(frozen=True, slots=True)
-class RuleSettingOrigin:
-    location: str
-    source: str | None
-
-
-@dataclass(frozen=True, slots=True)
 class RuleDecision:
     severity: Severity | None
     location: str | None = None

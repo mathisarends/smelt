@@ -7,9 +7,8 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from smelt.analysis.errors import AnalysisError
 from smelt.config.source import SourceStore
-from smelt.engine.changes import read_blobs, run_git
+from smelt.engine.changes import read_blobs
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -41,24 +40,6 @@ class GitSourceStore(SourceStore):
     @classmethod
     def from_index(cls, index: GitIndex) -> GitSourceStore:
         return cls(index.repository, index.blobs, yaml_paths=index.yaml_paths)
-
-    @classmethod
-    def from_revision(cls, repository: Path, revision: str) -> GitSourceStore:
-        blobs: dict[str, str] = {}
-        for record in run_git(
-            repository, "ls-tree", "-rz", "--full-tree", revision
-        ).split(b"\0"):
-            if not record:
-                continue
-            metadata, raw_path = record.split(b"\t", 1)
-            mode, kind, oid = metadata.split()
-            path = Path(os.fsdecode(raw_path))
-            if kind != b"blob" or mode == b"120000":
-                continue
-            if path.drive or path.is_absolute() or ".." in path.parts:
-                raise AnalysisError(f"unsafe path in Git snapshot: {path}")
-            blobs[path.as_posix()] = oid.decode("ascii")
-        return cls(repository, blobs)
 
     def resolve(self, path: Path) -> Path:
         # Working-tree symlinks and missing directories cannot change a Git view.

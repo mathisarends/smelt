@@ -125,7 +125,6 @@ class InferredConfig:
     mirror: MirrorGuess | None = None
     layers: list[InferredLayer] = field(default_factory=list)
     layer_gaps: tuple[str, ...] = ()
-    tests_layout: str = "none"
     members: list[WorkspaceMember] = field(default_factory=list)
     # composition root or wiring module -> why init put it there
     evidence: dict[str, str] = field(default_factory=dict)
@@ -192,8 +191,6 @@ def infer_config(root: Path, *, include_members: bool = True) -> InferredConfig 
     if inferred.layers:
         inferred.layer_gaps = _layer_gaps(inferred, containers, packages=packages)
     inferred.mirror = infer_mirror(root, inferred.test_roots, packages)
-    if inferred.mirror is not None:
-        inferred.tests_layout = "mirror"
     return inferred
 
 

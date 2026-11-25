@@ -45,7 +45,7 @@ class WorkspaceIndex:
 
     @cached_property
     def metadata(self) -> dict[str, dict[str, Any]]:
-        """All pyproject inputs, including absent files, for analysis cache identity."""
+        """The pyproject data of the root and every member, empty for an absent file."""
         if not self._enabled:
             return {}
         return {path: self._read_project(path) for path in (".", *self._paths)}

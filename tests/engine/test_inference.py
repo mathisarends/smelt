@@ -226,7 +226,7 @@ class TestInferConfig:
         ]
         assert inferred.shared == ["shop.common"]
         assert inferred.composition_root == ["shop.bootstrap"]
-        assert inferred.tests_layout == "none"
+        assert inferred.mirror is None
 
     def test_rendered_config_names_the_rules_of_its_policies(
         self, tmp_path: Path
@@ -274,7 +274,7 @@ class TestInferConfig:
             ("domain", "domain", []),
             ("presentation", "api", ["domain"]),
         ]
-        assert inferred.tests_layout == "none"
+        assert inferred.mirror is None
 
     def test_plain_package_without_structure(self, tmp_path: Path) -> None:
         write_project(tmp_path, {"tool/__init__.py": "", "tool/cli.py": ""})
@@ -645,7 +645,7 @@ class TestDddWorkspace:
         inferred = infer_config(write_project(tmp_path, DDD_WORKSPACE))
 
         assert inferred is not None
-        assert inferred.tests_layout == "mirror"
+        assert inferred.mirror is not None
         config, warnings = parse_config(
             _load_yaml(render_config(inferred)), root=tmp_path
         )
