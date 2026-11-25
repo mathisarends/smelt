@@ -49,6 +49,7 @@
 | [LAY009](LAY009.md) | layout/redundant-module-name | layout | explicit | hint |
 | [LAY010](LAY010.md) | layout/reexport-only-module | layout | explicit | hint |
 | [LAY011](LAY011.md) | layout/misplaced-module-logger | layout | explicit | warning |
+| [LAY012](LAY012.md) | layout/redundant-comment | layout | explicit | hint |
 | [MET001](MET001.md) | meta/unused-suppression | meta | default | warning |
 | [MET002](MET002.md) | meta/missing-suppression-reason | meta | default | error |
 | [MET003](MET003.md) | meta/resolved-debt | meta | default | warning |

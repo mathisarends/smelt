@@ -128,6 +128,11 @@ impl<'a> Comments<'a> {
         self.texts.get(&line).map(|(text, _)| *text)
     }
 
+    /// The byte offset of the comment on a line.
+    pub fn offset(&self, line: usize) -> Option<usize> {
+        self.texts.get(&line).map(|(_, offset)| *offset)
+    }
+
     /// The lines of the comment block that ends right above `line`, nearest first.
     pub fn block_above(&self, line: usize) -> Vec<usize> {
         let mut found = Vec::new();
