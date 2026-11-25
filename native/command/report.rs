@@ -612,7 +612,7 @@ fn group(kind: &str, key: &str, found: &[&Finding]) -> Value {
         );
         let only = first
             .expected_get("type_checking_only")
-            .is_some_and(super::policy::truthy);
+            .is_some_and(super::pyjson::truthy);
         group.insert("type_checking_only".into(), json!(only));
     }
     if kind == "shared_helper" {

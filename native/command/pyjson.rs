@@ -2,6 +2,18 @@
 use serde_json::{Number, Value};
 use std::fmt::Write;
 
+/// `bool(value)` for a value Python loaded from JSON or YAML.
+pub fn truthy(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Bool(flag) => *flag,
+        Value::Number(number) => number.as_f64().is_some_and(|number| number != 0.0),
+        Value::String(text) => !text.is_empty(),
+        Value::Array(items) => !items.is_empty(),
+        Value::Object(entries) => !entries.is_empty(),
+    }
+}
+
 /// `json.dumps(value, indent=2, ensure_ascii=False)`.
 pub fn indented(value: &Value) -> String {
     let mut out = String::new();

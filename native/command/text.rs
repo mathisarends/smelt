@@ -122,17 +122,17 @@ pub fn render(
         && shown.iter().any(|violation| {
             violation
                 .expected_get("usage_scope")
-                .is_some_and(super::policy::truthy)
+                .is_some_and(super::pyjson::truthy)
         })
     {
         lines.push("Usage limits: excluded files (including maintainer scripts), unselected packages and external/dynamic consumers were not assessed; review them before renaming.".to_owned());
     }
     let coverage = &report.coverage;
     if let Some(complete) = coverage.get("complete") {
-        let complete = super::policy::truthy(complete);
+        let complete = super::pyjson::truthy(complete);
         let attention = coverage
             .get("architecture_configured")
-            .is_none_or(super::policy::truthy)
+            .is_none_or(super::pyjson::truthy)
             || coverage.get("mode").and_then(Value::as_str) == Some("strict");
         if !(concise && complete) && attention {
             let counts = coverage.get("counts");
@@ -683,7 +683,7 @@ fn expected_lines(violation: &Finding, expected: &Map<String, Value>) -> Vec<Str
                     .map(String::from)
                     .collect::<Vec<_>>()
                     .join(", "),
-                other if super::policy::truthy(other) => display(other),
+                other if super::pyjson::truthy(other) => display(other),
                 _ => "(nothing)".to_owned(),
             };
             lines.push(format!(

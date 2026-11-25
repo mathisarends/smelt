@@ -12,7 +12,12 @@
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A layer imports a layer outside its `may_depend_on` allowlist."
+    "summary": "A layer imports a layer outside its `may_depend_on` allowlist.",
+    "activation": {
+      "description": "architecture.layers defines layer dependencies.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.dependencies.features:CrossFeatureImport",
@@ -27,7 +32,12 @@
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A feature imports another feature outside the allowed layer pairs."
+    "summary": "A feature imports another feature outside the allowed layer pairs.",
+    "activation": {
+      "description": "architecture.features defines feature boundaries.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.dependencies.third_party:ThirdPartyDenied",
@@ -42,7 +52,12 @@
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A layer imports a third-party package its `third_party` policy does not allow."
+    "summary": "A layer imports a third-party package its `third_party` policy does not allow.",
+    "activation": {
+      "description": "A layer's third_party policy restricts dependencies.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.dependencies.cycles:ImportCycle",
@@ -57,7 +72,8 @@
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Import cycles between architecture nodes or explicitly selected concrete modules."
+    "summary": "Import cycles between architecture nodes or explicitly selected concrete modules.",
+    "activation": null
   },
   {
     "target": "smelt.rules.dependencies.features:SharedImportsFeature",
@@ -72,7 +88,12 @@
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A shared or central module imports a feature module."
+    "summary": "A shared or central module imports a feature module.",
+    "activation": {
+      "description": "architecture.shared or a layer module binding declares shared/central modules.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.dependencies.composition_root:CompositionRootLeak",
@@ -87,7 +108,12 @@
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A module imports the composition root or a declared wiring module."
+    "summary": "A module imports the composition root or a declared wiring module.",
+    "activation": {
+      "description": "architecture.composition_root or architecture.wiring declares assembly boundaries.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.dependencies.interfaces:PrivateModuleImport",
@@ -103,7 +129,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Code outside a contracted package imports a private implementation module."
+    "summary": "Code outside a contracted package imports a private implementation module.",
+    "activation": {
+      "description": "A package API declares public entry points, including an explicitly empty public list.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.dependencies.facades:FacadeExportGap",
@@ -119,7 +150,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A public implementation name has many outside importers but no package export."
+    "summary": "A public implementation name has many outside importers but no package export.",
+    "activation": {
+      "description": "A package API sets min_importers_to_export.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.dependencies.member_boundaries:MemberBoundary",
@@ -135,7 +171,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A workspace member imports a member outside its may_depend_on allowlist."
+    "summary": "A workspace member imports a member outside its may_depend_on allowlist.",
+    "activation": {
+      "description": "architecture.members declares workspace member boundaries.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.dependencies.member_boundaries:UndeclaredMemberDependency",
@@ -151,7 +192,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A workspace member imports another member without declaring a direct project dependency."
+    "summary": "A workspace member imports another member without declaring a direct project dependency.",
+    "activation": {
+      "description": "project.workspace is uv; static member metadata declares dependencies.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.layout:UnknownLayer",
@@ -166,7 +212,8 @@
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A feature contains a package or module outside the declared layers."
+    "summary": "A feature contains a package or module outside the declared layers.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.layout:UnclassifiedModule",
@@ -181,7 +228,8 @@
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A module maps to no feature, layer, shared set or composition root."
+    "summary": "A module maps to no feature, layer, shared set or composition root.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.coverage:IncompleteCoverage",
@@ -196,7 +244,8 @@
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "none",
-    "summary": "Strict coverage found source outside the architecture policy or an exclusion without a reason."
+    "summary": "Strict coverage found source outside the architecture policy or an exclusion without a reason.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.contracts:MissingRequiredModule",
@@ -211,7 +260,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A package is missing a required module or public entry point."
+    "summary": "A package is missing a required module or public entry point.",
+    "activation": {
+      "description": "A package API requires modules or named public entry points.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.navigation:DeepObjectNavigation",
@@ -226,7 +280,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Review a method call reached through multiple instance attributes."
+    "summary": "Review a method call reached through multiple instance attributes.",
+    "activation": {
+      "description": "style or a package override sets navigation.",
+      "option": "navigation",
+      "required": false
+    }
   },
   {
     "target": "smelt.rules.structure.call_arguments:InlineCallArgument",
@@ -241,7 +300,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "An awaited result, eager comprehension or builtin reduction is passed directly as a call argument."
+    "summary": "An awaited result, eager comprehension or builtin reduction is passed directly as a call argument.",
+    "activation": {
+      "description": "style or a package override sets call_argument_kinds.",
+      "option": "call_argument_kinds",
+      "required": false
+    }
   },
   {
     "target": "smelt.rules.structure.parameters:ExcessPositionalParameters",
@@ -256,7 +320,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "A function accepts more positional parameters than its package allows."
+    "summary": "A function accepts more positional parameters than its package allows.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.duplicate_functions:DuplicateFunction",
@@ -271,7 +336,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A module-level function repeats another function's code."
+    "summary": "A module-level function repeats another function's code.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.conditional_expressions:NestedConditionalExpression",
@@ -286,7 +352,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A conditional expression directly contains another result conditional."
+    "summary": "A conditional expression directly contains another result conditional.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.comprehensions:ComplexComprehension",
@@ -301,7 +368,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A comprehension combines too many iteration or decision steps."
+    "summary": "A comprehension combines too many iteration or decision steps.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.constructors:ConstructorLogic",
@@ -316,7 +384,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A constructor contains more decisions than the configured limit."
+    "summary": "A constructor contains more decisions than the configured limit.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.call_receivers:InlineConstructorReceiver",
@@ -331,7 +400,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A method is called directly on a newly constructed instance."
+    "summary": "A method is called directly on a newly constructed instance.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.settings:SecretSettingsField",
@@ -346,7 +416,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A secret-named settings field accepts an unwrapped str or bytes value."
+    "summary": "A secret-named settings field accepts an unwrapped str or bytes value.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.providers:RedundantDishkaProvider",
@@ -361,7 +432,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A Dishka provider method only forwards typed dependencies to a constructor."
+    "summary": "A Dishka provider method only forwards typed dependencies to a constructor.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.assignments:BundledInstanceAssignment",
@@ -376,7 +448,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "An assignment writes multiple direct instance attributes under a separate-assignment convention."
+    "summary": "An assignment writes multiple direct instance attributes under a separate-assignment convention.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.type_dispatch:PreferMatchTypeDispatch",
@@ -391,7 +464,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Review a same-subject isinstance/elif chain for match/case under an explicit package policy."
+    "summary": "Review a same-subject isinstance/elif chain for match/case under an explicit package policy.",
+    "activation": {
+      "description": "style or a package override sets type_dispatch.style to match.",
+      "option": "type_dispatch",
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.callables:PreferCallableInstance",
@@ -406,7 +484,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Review __call__ and an operation-based class name for a single public method."
+    "summary": "Review __call__ and an operation-based class name for a single public method.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.aliases:RedundantNameAlias",
@@ -421,7 +500,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A module-level name only repeats another class or function name."
+    "summary": "A module-level name only repeats another class or function name.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.interface_docstrings:MissingInterfaceDocstring",
@@ -436,7 +516,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "An abstract or Protocol method has a placeholder body and no docstring."
+    "summary": "An abstract or Protocol method has a placeholder body and no docstring.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.broad_excepts:MissingBroadExceptReason",
@@ -451,7 +532,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A broad exception handler does not say why it catches everything."
+    "summary": "A broad exception handler does not say why it catches everything.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.narrowing_asserts:DuplicateNarrowingAssert",
@@ -466,7 +548,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Several methods of a class assert the same narrowing of a self attribute."
+    "summary": "Several methods of a class assert the same narrowing of a self attribute.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.loop_collections:LoopInvariantCollection",
@@ -481,7 +564,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A membership lookup set is rebuilt in a loop from stable immutable inputs."
+    "summary": "A membership lookup set is rebuilt in a loop from stable immutable inputs.",
+    "activation": null
   },
   {
     "target": "smelt.rules.dependencies.fanout:PackageImportFanout",
@@ -497,7 +581,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "One caller spreads a package API across several import paths."
+    "summary": "One caller spreads a package API across several import paths.",
+    "activation": {
+      "description": "A package API sets min_imports_to_bundle.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.dependencies.module_fanout:ModuleImportFanout",
@@ -512,7 +601,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A module imports more project modules than its policy allows."
+    "summary": "A module imports more project modules than its policy allows.",
+    "activation": {
+      "description": "style or a package override sets module_import_exemptions.",
+      "option": "module_import_exemptions",
+      "required": false
+    }
   },
   {
     "target": "smelt.rules.structure.import_style:ImportStyle",
@@ -527,7 +621,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "An import does not follow the package's declared relative/absolute style."
+    "summary": "An import does not follow the package's declared relative/absolute style.",
+    "activation": {
+      "description": "style or a package override sets imports.",
+      "option": "imports",
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.package_imports:PreferPackageImport",
@@ -542,7 +641,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "Prefer an existing package re-export over an implementation import."
+    "summary": "Prefer an existing package re-export over an implementation import.",
+    "activation": {
+      "description": "style or a package override lists third_party_reexports.",
+      "option": "third_party_reexports",
+      "required": false
+    }
   },
   {
     "target": "smelt.rules.structure.naming:ForbiddenPackageName",
@@ -557,7 +661,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A package or module name is listed in style.forbidden_names."
+    "summary": "A package or module name is listed in style.forbidden_names.",
+    "activation": {
+      "description": "style.forbidden_names contains naming restrictions.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.headers:ModuleDocstringConvention",
@@ -572,7 +681,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A module docstring is missing or present against the package's module_docstrings convention."
+    "summary": "A module docstring is missing or present against the package's module_docstrings convention.",
+    "activation": {
+      "description": "style or a package override sets module_docstrings to require or forbid.",
+      "option": "module_docstrings",
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.naming:ForbiddenPrivateModule",
@@ -587,7 +701,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A module or package has an underscore prefix forbidden by its naming policy."
+    "summary": "A module or package has an underscore prefix forbidden by its naming policy.",
+    "activation": {
+      "description": "style or a package override sets private_modules to forbid.",
+      "option": "private_modules",
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.ordering:PublicDefinitionsFirst",
@@ -602,7 +721,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "Definitions are out of public-first order within modeled execution boundaries."
+    "summary": "Definitions are out of public-first order within modeled execution boundaries.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.members:InternalStaticHelper",
@@ -617,7 +737,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "An internal static helper can be reviewed for extraction to a private module function."
+    "summary": "An internal static helper can be reviewed for extraction to a private module function.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.call_order:CallerBeforeCallee",
@@ -632,7 +753,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "A direct caller appears after same-visibility helpers it calls."
+    "summary": "A direct caller appears after same-visibility helpers it calls.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.file_naming:FileNameConvention",
@@ -647,7 +769,12 @@
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "none",
-    "summary": "A YAML or Compose filename differs from the project's canonical spelling."
+    "summary": "A YAML or Compose filename differs from the project's canonical spelling.",
+    "activation": {
+      "description": "style.file_naming selects a canonical YAML extension or Compose basename.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.constants:PrivateClassConstant",
@@ -662,7 +789,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "A private literal constant is declared on an ordinary class instead of its module."
+    "summary": "A private literal constant is declared on an ordinary class instead of its module.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.naming:RedundantModuleName",
@@ -677,7 +805,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A module filename repeats context already supplied by an ancestor package."
+    "summary": "A module filename repeats context already supplied by an ancestor package.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.exports:ReexportOnlyModule",
@@ -692,7 +821,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "An ordinary module consists entirely of explicit re-exports."
+    "summary": "An ordinary module consists entirely of explicit re-exports.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.headers:MisplacedModuleLogger",
@@ -707,7 +837,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "A module logger is declared outside the block immediately after imports."
+    "summary": "A module logger is declared outside the block immediately after imports.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.comments:RedundantComment",
@@ -722,7 +853,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A comment or docstring only restates the name it documents."
+    "summary": "A comment or docstring only restates the name it documents.",
+    "activation": null
   },
   {
     "target": "smelt.rules.meta:UnusedSuppression",
@@ -735,7 +867,8 @@
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "sometimes",
-    "summary": "An inline suppression is unused or names an unknown identifier."
+    "summary": "An inline suppression is unused or names an unknown identifier.",
+    "activation": null
   },
   {
     "target": "smelt.rules.meta:SuppressionWithoutReason",
@@ -748,7 +881,8 @@
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "none",
-    "summary": "An inline suppression without a `-- reason`."
+    "summary": "An inline suppression without a `-- reason`.",
+    "activation": null
   },
   {
     "target": "smelt.rules.meta:ResolvedDebt",
@@ -761,7 +895,8 @@
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "none",
-    "summary": "A debt entry that no longer matches any violation."
+    "summary": "A debt entry that no longer matches any violation.",
+    "activation": null
   },
   {
     "target": "smelt.rules.meta:MissingRulePolicy",
@@ -774,7 +909,8 @@
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "none",
-    "summary": "An explicitly enabled rule is missing the policy it needs in its scope."
+    "summary": "An explicitly enabled rule is missing the policy it needs in its scope.",
+    "activation": null
   },
   {
     "target": "smelt.rules.meta:UncoveredPackageFacade",
@@ -787,7 +923,8 @@
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "none",
-    "summary": "A package facade cannot supply names that IMP004 is enabled to check."
+    "summary": "A package facade cannot supply names that IMP004 is enabled to check.",
+    "activation": null
   },
   {
     "target": "smelt.rules.meta:MissingToolSuppressionReason",
@@ -802,7 +939,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A noqa, type: ignore or other tool suppression without a reason."
+    "summary": "A noqa, type: ignore or other tool suppression without a reason.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.enum_values:RedundantStrEnumValue",
@@ -817,7 +955,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Review .value on a known StrEnum member for direct use of the member."
+    "summary": "Review .value on a known StrEnum member for direct use of the member.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.naming:ForbiddenBaseClassAffix",
@@ -832,7 +971,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A class definition carries a Base prefix or suffix instead of a responsibility."
+    "summary": "A class definition carries a Base prefix or suffix instead of a responsibility.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.discriminators:PreferStrEnumDiscriminator",
@@ -847,7 +987,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Prefer StrEnum members for single-string class discriminator fields."
+    "summary": "Prefer StrEnum members for single-string class discriminator fields.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.enum_styles:StrEnumValueConvention",
@@ -862,7 +1003,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "A StrEnum spells its values against the configured auto/explicit convention."
+    "summary": "A StrEnum spells its values against the configured auto/explicit convention.",
+    "activation": {
+      "description": "style or a package override sets str_enum_values.",
+      "option": "str_enum_values",
+      "required": false
+    }
   },
   {
     "target": "smelt.rules.structure.stateful_dataclasses:StatefulDataclass",
@@ -877,7 +1023,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A dataclass mutates its own fields after construction."
+    "summary": "A dataclass mutates its own fields after construction.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.dataclass_options:MissingDataclassOption",
@@ -892,7 +1039,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "A dataclass does not set an option its package requires."
+    "summary": "A dataclass does not set an option its package requires.",
+    "activation": {
+      "description": "style or a package override sets dataclass_options, including [].",
+      "option": "dataclass_options",
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.project_bases:PreferProjectBaseClass",
@@ -907,7 +1059,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A class inherits an outside base directly instead of the project base."
+    "summary": "A class inherits an outside base directly instead of the project base.",
+    "activation": {
+      "description": "style or a package override sets bases, including {}.",
+      "option": "bases",
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.domain_exceptions:PreferDomainException",
@@ -922,7 +1079,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Production code raises a builtin exception instead of the project hierarchy."
+    "summary": "Production code raises a builtin exception instead of the project hierarchy.",
+    "activation": {
+      "description": "style or a package override sets errors, including {}.",
+      "option": "errors",
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.duplicate_class_names:DuplicateClassName",
@@ -937,7 +1099,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Two modules of one package define a public class with the same name."
+    "summary": "Two modules of one package define a public class with the same name.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.durations:ImplicitDurationUnit",
@@ -952,7 +1115,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A numeric duration is named without its unit or written as an inline number."
+    "summary": "A numeric duration is named without its unit or written as an inline number.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.frozen_collections:MutableFieldInFrozenDataclass",
@@ -967,7 +1131,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A frozen dataclass directly declares a mutable collection field."
+    "summary": "A frozen dataclass directly declares a mutable collection field.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.parallel_fields:ParallelRecordFields",
@@ -982,7 +1147,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Stored sequence fields of one instance are paired by position."
+    "summary": "Stored sequence fields of one instance are paired by position.",
+    "activation": null
   },
   {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
@@ -998,7 +1164,12 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "A test file does not live where tests.layout expects it."
+    "summary": "A test file does not live where tests.layout expects it.",
+    "activation": {
+      "description": "tests.layout is mirror.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.testing.private_access:PrivateTestAccess",
@@ -1013,7 +1184,8 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "A test imports or reads a private production name through a known module or instance."
+    "summary": "A test imports or reads a private production name through a known module or instance.",
+    "activation": null
   },
   {
     "target": "smelt.rules.testing.mocking:ForbiddenTestMock",
@@ -1028,7 +1200,12 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "A recognized mocking operation occurs in a test path that forbids mocks."
+    "summary": "A recognized mocking operation occurs in a test path that forbids mocks.",
+    "activation": {
+      "description": "tests.forbidden_mock_paths contains test path patterns.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.testing.mocking:StringPatchTarget",
@@ -1043,7 +1220,8 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "A recognized patch call or decorator uses a literal string target."
+    "summary": "A recognized patch call or decorator uses a literal string target.",
+    "activation": null
   },
   {
     "target": "smelt.rules.testing.mocking:ExcessiveTestPatches",
@@ -1058,7 +1236,12 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "A collected test exceeds its configured number of recognized patch calls."
+    "summary": "A collected test exceeds its configured number of recognized patch calls.",
+    "activation": {
+      "description": "The tests/excess-patches entry sets max, including zero.",
+      "option": null,
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.testing.outcomes:TestWithoutOutcomeCheck",
@@ -1073,7 +1256,8 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "A collected test has no recognized explicit outcome assertion."
+    "summary": "A collected test has no recognized explicit outcome assertion.",
+    "activation": null
   },
   {
     "target": "smelt.rules.testing.outcomes:TestOnlyChecksPossiblyEmptyData",
@@ -1088,7 +1272,8 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "Every recognized outcome can disappear or pass trivially on empty input."
+    "summary": "Every recognized outcome can disappear or pass trivially on empty input.",
+    "activation": null
   },
   {
     "target": "smelt.rules.testing.timing:UnboundedTestWait",
@@ -1103,7 +1288,8 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "A known test wait has no local deadline, or the scheduler clock is replaced."
+    "summary": "A known test wait has no local deadline, or the scheduler clock is replaced.",
+    "activation": null
   },
   {
     "target": "smelt.rules.testing.cases:IndependentTestCaseLoop",
@@ -1118,7 +1304,8 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "A small literal loop repeats a candidate independent arrange/action/assert case."
+    "summary": "A small literal loop repeats a candidate independent arrange/action/assert case.",
+    "activation": null
   },
   {
     "target": "smelt.rules.testing.awaits:AsyncMockWithoutAwaitCheck",
@@ -1133,7 +1320,8 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "A known async mock is checked for calls without corresponding await evidence."
+    "summary": "A known async mock is checked for calls without corresponding await evidence.",
+    "activation": null
   },
   {
     "target": "smelt.rules.testing.randomness:NondeterministicTestData",
@@ -1148,7 +1336,8 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "A test module calls a known random or time-derived data generator, or reads the wall clock."
+    "summary": "A test module calls a known random or time-derived data generator, or reads the wall clock.",
+    "activation": null
   },
   {
     "target": "smelt.rules.testing.untested:MissingMirrorTest",
@@ -1164,7 +1353,8 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "A source module with behaviour has no test at its mirrored path."
+    "summary": "A source module with behaviour has no test at its mirrored path.",
+    "activation": null
   },
   {
     "target": "smelt.rules.testing.skips:MissingSkipReason",
@@ -1179,7 +1369,8 @@
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none",
-    "summary": "A test is skipped, expected to fail or rerun without a tracked reason."
+    "summary": "A test is skipped, expected to fail or rerun without a tracked reason.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.headers:ForbiddenFutureAnnotations",
@@ -1194,7 +1385,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "The annotations future import violates a package or Python-version policy."
+    "summary": "The annotations future import violates a package or Python-version policy.",
+    "activation": {
+      "description": "style or a package override sets future_annotations to forbid or when-needed.",
+      "option": "future_annotations",
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.headers:RedundantFutureAnnotations",
@@ -1209,7 +1405,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Review an annotations future import with no detected postponement need."
+    "summary": "Review an annotations future import with no detected postponement need.",
+    "activation": {
+      "description": "style or a package override sets future_annotations to when-needed.",
+      "option": "future_annotations",
+      "required": true
+    }
   },
   {
     "target": "smelt.rules.structure.none_defaults:ImplicitOptionalDefault",
@@ -1224,7 +1425,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "An optional parameter with a None default uses truthiness to choose a fallback."
+    "summary": "An optional parameter with a None default uses truthiness to choose a fallback.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.context_managers:DeprecatedAsyncContextmanagerReturn",
@@ -1239,7 +1441,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "An @asynccontextmanager function annotates its return as AsyncIterator[T]."
+    "summary": "An @asynccontextmanager function annotates its return as AsyncIterator[T].",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.literal_types:DuplicateLiteralType",
@@ -1254,7 +1457,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Review repeated multi-value Literal types for a shared type alias."
+    "summary": "Review repeated multi-value Literal types for a shared type alias.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.annotation_quotes:PreferDeferredAnnotations",
@@ -1269,7 +1473,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "An annotation is quoted where deferred evaluation makes quotes unnecessary."
+    "summary": "An annotation is quoted where deferred evaluation makes quotes unnecessary.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.tuples:AnonymousTupleType",
@@ -1284,7 +1489,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A fixed-length tuple type leaves its fields unnamed."
+    "summary": "A fixed-length tuple type leaves its fields unnamed.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.generic_syntax:PreferInlineTypeParameters",
@@ -1299,7 +1505,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "A generic class uses an explicit Generic[...] base on a Python 3.12+ target."
+    "summary": "A generic class uses an explicit Generic[...] base on a Python 3.12+ target.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.members:InternalPublicMember",
@@ -1315,7 +1522,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A public module function or instance method has no observed use outside its module or class."
+    "summary": "A public module function or instance method has no observed use outside its module or class.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.module_symbols:InternalPublicModuleSymbol",
@@ -1332,7 +1540,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A public module constant or type alias has no observed external use or public-signature evidence."
+    "summary": "A public module constant or type alias has no observed external use or public-signature evidence.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.exports:PackageOnlyDunderAll",
@@ -1347,7 +1556,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "An ordinary module declares __all__ outside a package initializer."
+    "summary": "An ordinary module declares __all__ outside a package initializer.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.attributes:InternalPublicAttribute",
@@ -1362,7 +1572,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A public instance or class data attribute has no observed access outside its visibility boundary."
+    "summary": "A public instance or class data attribute has no observed access outside its visibility boundary.",
+    "activation": {
+      "description": "style or a package override sets public_attribute_boundary.",
+      "option": "public_attribute_boundary",
+      "required": false
+    }
   },
   {
     "target": "smelt.rules.structure.private_access:ForeignPrivateAccess",
@@ -1377,7 +1592,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Production code uses a private symbol or private attribute owned by another project module."
+    "summary": "Production code uses a private symbol or private attribute owned by another project module.",
+    "activation": {
+      "description": "style or a package override sets private_attribute_boundary.",
+      "option": "private_attribute_boundary",
+      "required": false
+    }
   },
   {
     "target": "smelt.rules.structure.delegates:RedundantPrivateDelegate",
@@ -1392,7 +1612,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A method only forwards its parameters to a private method used nowhere else."
+    "summary": "A method only forwards its parameters to a private method used nowhere else.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.private_definitions:ExcessPrivateDefinitions",
@@ -1407,7 +1628,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A module contains more private definitions than the configured limit."
+    "summary": "A module contains more private definitions than the configured limit.",
+    "activation": null
   },
   {
     "target": "smelt.rules.structure.reexport_convention:ReexportConvention",
@@ -1422,7 +1644,12 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes",
-    "summary": "A package initializer spells a re-export against its configured convention."
+    "summary": "A package initializer spells a re-export against its configured convention.",
+    "activation": {
+      "description": "style or a package override sets reexports to all or alias.",
+      "option": "reexports",
+      "required": false
+    }
   },
   {
     "target": "smelt.rules.testing.public_functions:TestOnlyPublicFunction",
@@ -1438,7 +1665,8 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "A public module function is accessed from tests but has no observed production use outside its own module."
+    "summary": "A public module function is accessed from tests but has no observed production use outside its own module.",
+    "activation": null
   },
   {
     "target": "smelt.rules.testing.public_attributes:TestOnlyPublicAttribute",
@@ -1454,6 +1682,7 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Tests read a public attribute with no observed production access outside its visibility boundary."
+    "summary": "Tests read a public attribute with no observed production access outside its visibility boundary.",
+    "activation": null
   }
 ]

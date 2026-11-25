@@ -1,6 +1,6 @@
 //! The report's coverage section, as `smelt.engine.coverage` and
 //! `smelt.analysis.contracts.describe_contract` write it.
-use super::pyjson::sorted_ascii;
+use super::pyjson::{sorted_ascii, truthy};
 use crate::checker::config::load::dump_model;
 use crate::checker::config::paths;
 use serde_json::{Map, Value, json};
@@ -54,7 +54,8 @@ fn has_layout(architecture: &Value) -> bool {
 /// `effective_coverage(config, facts, include_inventory=True)`; `layers` are
 /// the run's rule layers.
 pub fn effective(config: &Value, layers: &[Value], strict: bool, mut facts: Value) -> Value {
-    let dumped = dump_model(config);
+    let mut dumped = dump_model(config);
+    use_field_names(&mut dumped);
     // The members that declare their own architecture, with their packages.
     let governing: Map<String, Value> = config["members"]
         .as_object()
@@ -233,9 +234,8 @@ fn layer_name(name: &str) -> bool {
 /// `policy_hash`: equal for two reports checked under the same resolved config.
 fn policy_hash(dumped: &Value, layers: &[Value]) -> String {
     let mut policy = dumped.clone();
-    rename_ordering(&mut policy);
     if let Some(entries) = policy.as_object_mut()
-        && !truthy(entries.get("members"))
+        && !entries.get("members").is_some_and(truthy)
     {
         entries.shift_remove("members");
     }
@@ -251,7 +251,7 @@ fn policy_hash(dumped: &Value, layers: &[Value]) -> String {
     }
     let architecture = policy["architecture"].as_object_mut();
     if let Some(architecture) = architecture {
-        if !truthy(architecture.get("canonical_exports")) {
+        if !architecture.get("canonical_exports").is_some_and(truthy) {
             architecture.shift_remove("canonical_exports");
         }
         if let Some(graph) = architecture
@@ -261,7 +261,7 @@ fn policy_hash(dumped: &Value, layers: &[Value]) -> String {
         {
             graph.shift_remove("type_checking_cycles");
         }
-        if !truthy(architecture.get("members")) {
+        if !architecture.get("members").is_some_and(truthy) {
             architecture.shift_remove("members");
         }
     }
@@ -291,37 +291,42 @@ fn without_empty_modules(architecture: &mut Value) {
         .flat_map(|layers| layers.values_mut())
     {
         if let Some(layer) = layer.as_object_mut()
-            && !truthy(layer.get("modules"))
+            && !layer.get("modules").is_some_and(truthy)
         {
             layer.shift_remove("modules");
         }
     }
 }
 
-fn truthy(value: Option<&Value>) -> bool {
+/// The field names of a dump without aliases, as `model_dump()` writes them:
+/// `OrderingConfig.class_order` and a `{from, to}` allowance's `source` and
+/// `target`.
+fn use_field_names(value: &mut Value) {
     match value {
-        None | Some(Value::Null) => false,
-        Some(Value::Array(items)) => !items.is_empty(),
-        Some(Value::Object(entries)) => !entries.is_empty(),
-        Some(Value::String(text)) => !text.is_empty(),
-        Some(Value::Bool(flag)) => *flag,
-        Some(Value::Number(_)) => true,
+        Value::Object(entries) => {
+            if let Some(Value::Object(ordering)) = entries.get_mut("ordering") {
+                rename(ordering, "class", "class_order");
+            }
+            let allowances = entries
+                .get_mut("cross_feature")
+                .and_then(|cross_feature| cross_feature.get_mut("allow"))
+                .and_then(Value::as_array_mut);
+            for allowance in allowances.into_iter().flatten() {
+                if let Some(allowance) = allowance.as_object_mut() {
+                    rename(allowance, "from", "source");
+                    rename(allowance, "to", "target");
+                }
+            }
+            entries.values_mut().for_each(use_field_names);
+        }
+        Value::Array(items) => items.iter_mut().for_each(use_field_names),
+        _ => {}
     }
 }
 
-/// The field names of a dump without aliases: `OrderingConfig.class_order`.
-fn rename_ordering(value: &mut Value) {
-    match value {
-        Value::Object(entries) => {
-            if let Some(Value::Object(ordering)) = entries.get_mut("ordering")
-                && let Some(order) = ordering.shift_remove("class")
-            {
-                ordering.insert("class_order".into(), order);
-            }
-            entries.values_mut().for_each(rename_ordering);
-        }
-        Value::Array(items) => items.iter_mut().for_each(rename_ordering),
-        _ => {}
+fn rename(entries: &mut Map<String, Value>, alias: &str, field: &str) {
+    if let Some(value) = entries.shift_remove(alias) {
+        entries.insert(field.to_owned(), value);
     }
 }
 

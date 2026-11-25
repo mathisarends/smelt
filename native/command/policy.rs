@@ -3,6 +3,7 @@
 //!
 //! Every configuration the Python settings would reject returns `Err(())`, so
 //! the Python CLI reports it instead.
+use super::activation::{Activation, Metadata};
 use super::finding::Severity;
 use super::validate::Inventory;
 use crate::checker::patterns::ModulePattern;
@@ -73,6 +74,8 @@ pub struct Rule {
     pub scope: String,
     #[serde(default)]
     pub summary: String,
+    #[serde(default)]
+    pub activation: Option<Metadata>,
 }
 
 impl Rule {
@@ -390,7 +393,8 @@ impl<'a> Policy<'a> {
 
     /// Whether the root policy or a member architecture declares the rule's policy.
     fn declares(&self, activation: &Activation) -> bool {
-        (activation.matches)(self.config) || self.scoped.iter().any(activation.matches)
+        activation.matches(self.config)
+            || self.scoped.iter().any(|config| activation.matches(config))
     }
 
     /// `_root_limit_issues`: a root entry that sets only max leaves its rule off.
@@ -473,7 +477,7 @@ impl<'a> Policy<'a> {
     /// `_validate_policies`: an enabled rule whose required policy is missing.
     fn policy_issues(&self) -> bool {
         self.catalog.rules.iter().any(|rule| {
-            let Some(activation) = activation(&rule.code) else {
+            let Some(activation) = Activation::of(rule) else {
                 return false;
             };
             if !activation.required {
@@ -703,7 +707,7 @@ impl<'a> Policy<'a> {
                     let Some(rule) = self.catalog.by_code(code) else {
                         continue;
                     };
-                    let option = activation(code).and_then(|activation| activation.option);
+                    let option = Activation::of(rule).and_then(|activation| activation.option);
                     let default =
                         if option.is_some_and(|option| base["__structure__"][option].is_null()) {
                             root.apply_layers(code, None, usize::MAX)
@@ -827,16 +831,13 @@ impl<'a> Policy<'a> {
         let root = self.config.get("__workspace_base__").unwrap_or(self.config);
         let mut issues = Vec::new();
         for rule in &self.catalog.rules {
-            let Some(activation) = activation(&rule.code) else {
+            let Some(activation) = Activation::of(rule) else {
                 continue;
             };
             if rule.enabled_by_default || !self.declares(&activation) {
                 continue;
             }
-            let root_declares = match activation.option {
-                None => (activation.matches)(root),
-                Some(option) => (activation.accept)(&root["__structure__"][option]),
-            };
+            let root_declares = activation.root_declares(root);
             if named.contains(rule.code.as_str())
                 && (!root_declares || self.global_value(rule).is_some())
             {
@@ -1077,270 +1078,4 @@ fn has_reason(setting: &Value) -> bool {
     setting
         .get("reason")
         .is_some_and(|reason| !reason.is_null())
-}
-
-/// `PolicyActivation` from `smelt.rules.activation.POLICIES`.
-pub struct Activation {
-    pub description: &'static str,
-    pub matches: fn(&Value) -> bool,
-    pub option: Option<&'static str>,
-    pub required: bool,
-    pub accept: fn(&Value) -> bool,
-}
-
-fn is_set(value: &Value) -> bool {
-    !value.is_null()
-}
-
-pub fn truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(flag) => *flag,
-        Value::Number(number) => number.as_f64().is_some_and(|number| number != 0.0),
-        Value::String(text) => !text.is_empty(),
-        Value::Array(items) => !items.is_empty(),
-        Value::Object(entries) => !entries.is_empty(),
-    }
-}
-
-/// The policies an option-based activation reads: style, then every contract.
-fn policies(config: &Value) -> impl Iterator<Item = &Value> {
-    let structure = &config["__structure__"];
-    std::iter::once(structure).chain(
-        structure["contracts"]
-            .as_object()
-            .into_iter()
-            .flat_map(|contracts| contracts.values()),
-    )
-}
-
-fn contracts(config: &Value) -> impl Iterator<Item = &Value> {
-    config["__structure__"]["contracts"]
-        .as_object()
-        .into_iter()
-        .flat_map(|contracts| contracts.values())
-}
-
-macro_rules! option_activation {
-    ($description:expr, $option:expr, $required:expr, $accept:expr) => {
-        Activation {
-            description: $description,
-            matches: |config| policies(config).any(|policy| ($accept)(&policy[$option])),
-            option: Some($option),
-            required: $required,
-            accept: $accept,
-        }
-    };
-}
-
-macro_rules! activation {
-    ($description:expr, $matches:expr) => {
-        Activation {
-            description: $description,
-            matches: $matches,
-            option: None,
-            required: true,
-            accept: is_set,
-        }
-    };
-}
-
-fn max_patches_per_test(config: &Value) -> bool {
-    let rules = &config["rules"];
-    ["TST005", "tests/excess-patches"]
-        .iter()
-        .any(|key| rules[*key].is_object() && entry_max(&rules[*key]).is_some())
-}
-
-pub fn activation(code: &str) -> Option<Activation> {
-    Some(match code {
-        "LAY007" => activation!(
-            "style.file_naming selects a canonical YAML extension or Compose basename.",
-            |config| {
-                let naming = &config["__structure__"]["file_naming"];
-                is_set(&naming["yaml_extension"]) || is_set(&naming["compose_basename"])
-            }
-        ),
-        "ARC001" => activation!(
-            "architecture.layers defines layer dependencies.",
-            |config| { truthy(&config["architecture"]["layers"]) }
-        ),
-        "ARC002" => activation!(
-            "architecture.features defines feature boundaries.",
-            |config| { is_set(&config["architecture"]["features"]) }
-        ),
-        "ARC003" => activation!(
-            "A layer's third_party policy restricts dependencies.",
-            |config| {
-                config["architecture"]["layers"]
-                    .as_object()
-                    .into_iter()
-                    .flatten()
-                    .any(|(_, layer)| {
-                        layer["third_party"]["default"] == "deny"
-                            || truthy(&layer["third_party"]["deny"])
-                    })
-            }
-        ),
-        "ARC005" => activation!(
-            "architecture.shared or a layer module binding declares shared/central modules.",
-            |config| {
-                let architecture = &config["architecture"];
-                truthy(&architecture["shared"])
-                    || architecture["layers"]
-                        .as_object()
-                        .into_iter()
-                        .flatten()
-                        .any(|(_, layer)| truthy(&layer["modules"]))
-            }
-        ),
-        "ARC006" => activation!(
-            "architecture.composition_root or architecture.wiring declares assembly boundaries.",
-            |config| {
-                truthy(&config["architecture"]["composition_root"])
-                    || truthy(&config["architecture"]["wiring"])
-            }
-        ),
-        "ARC007" => activation!(
-            "A package API declares public entry points, including an explicitly empty public list.",
-            |config| contracts(config).any(|contract| is_set(&contract["public"]))
-        ),
-        "IMP001" => activation!("A package API sets min_imports_to_bundle.", |config| {
-            contracts(config).any(|contract| is_set(&contract["min_imports_to_bundle"]))
-        }),
-        "ARC008" => activation!("A package API sets min_importers_to_export.", |config| {
-            contracts(config).any(|contract| is_set(&contract["min_importers_to_export"]))
-        }),
-        "IMP002" => option_activation!(
-            "style or a package override sets module_import_exemptions.",
-            "module_import_exemptions",
-            false,
-            is_set
-        ),
-        "ARC009" => activation!(
-            "architecture.members declares workspace member boundaries.",
-            |config| truthy(&config["architecture"]["members"])
-        ),
-        "ARC010" => activation!(
-            "project.workspace is uv; static member metadata declares dependencies.",
-            |config| config["project"]["workspace"] == "uv"
-        ),
-        "LAY001" => activation!(
-            "style.forbidden_names contains naming restrictions.",
-            |config| { truthy(&config["__structure__"]["forbidden_names"]) }
-        ),
-        "ARC014" => activation!(
-            "A package API requires modules or named public entry points.",
-            |config| contracts(config)
-                .any(|contract| truthy(&contract["required"]) || truthy(&contract["public"]))
-        ),
-        "IMP003" => option_activation!(
-            "style or a package override sets imports.",
-            "imports",
-            true,
-            is_set
-        ),
-        "LAY002" => option_activation!(
-            "style or a package override sets module_docstrings to require or forbid.",
-            "module_docstrings",
-            true,
-            |value: &Value| value == "forbid" || value == "require"
-        ),
-        "TYP001" => option_activation!(
-            "style or a package override sets future_annotations to forbid or when-needed.",
-            "future_annotations",
-            true,
-            |value: &Value| value == "forbid" || value == "when-needed"
-        ),
-        "TYP002" => option_activation!(
-            "style or a package override sets future_annotations to when-needed.",
-            "future_annotations",
-            true,
-            |value: &Value| value == "when-needed"
-        ),
-        "LAY003" => option_activation!(
-            "style or a package override sets private_modules to forbid.",
-            "private_modules",
-            true,
-            |value: &Value| value == "forbid"
-        ),
-        "IDM002" => option_activation!(
-            "style or a package override sets type_dispatch.style to match.",
-            "type_dispatch",
-            true,
-            |value: &Value| !value.is_null() && value["style"] == "match"
-        ),
-        "VIS004" => option_activation!(
-            "style or a package override sets public_attribute_boundary.",
-            "public_attribute_boundary",
-            false,
-            is_set
-        ),
-        "VIS005" => option_activation!(
-            "style or a package override sets private_attribute_boundary.",
-            "private_attribute_boundary",
-            false,
-            is_set
-        ),
-        "CPX001" => option_activation!(
-            "style or a package override sets navigation.",
-            "navigation",
-            false,
-            is_set
-        ),
-        "CPX002" => option_activation!(
-            "style or a package override sets call_argument_kinds.",
-            "call_argument_kinds",
-            false,
-            is_set
-        ),
-        "MOD004" => option_activation!(
-            "style or a package override sets str_enum_values.",
-            "str_enum_values",
-            false,
-            is_set
-        ),
-        "MOD006" => option_activation!(
-            "style or a package override sets dataclass_options, including [].",
-            "dataclass_options",
-            true,
-            is_set
-        ),
-        "IMP004" => option_activation!(
-            "style or a package override lists third_party_reexports.",
-            "third_party_reexports",
-            false,
-            truthy
-        ),
-        "MOD007" => option_activation!(
-            "style or a package override sets bases, including {}.",
-            "bases",
-            true,
-            is_set
-        ),
-        "MOD008" => option_activation!(
-            "style or a package override sets errors, including {}.",
-            "errors",
-            true,
-            is_set
-        ),
-        "VIS008" => option_activation!(
-            "style or a package override sets reexports to all or alias.",
-            "reexports",
-            false,
-            |value: &Value| value == "all" || value == "alias"
-        ),
-        "TST001" => activation!("tests.layout is mirror.", |config| {
-            config["tests"]["layout"] == "mirror"
-        }),
-        "TST003" => activation!(
-            "tests.forbidden_mock_paths contains test path patterns.",
-            |config| truthy(&config["tests"]["forbidden_mock_paths"])
-        ),
-        "TST005" => activation!(
-            "The tests/excess-patches entry sets max, including zero.",
-            max_patches_per_test
-        ),
-        _ => return None,
-    })
 }

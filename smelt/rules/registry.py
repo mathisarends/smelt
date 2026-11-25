@@ -16,6 +16,7 @@ from smelt.rules.base import RuleSet
 
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
+    from smelt.rules.activation import PolicyActivation
     from smelt.rules.base import GuideTarget, RuleContract, RuleDoc
 
 _IMPLEMENTATIONS = (
@@ -171,6 +172,8 @@ def catalog_metadata() -> list[dict[str, Any]]:
             ).value,
             # The native check reports it without importing the rule.
             "summary": rule.explain().summary,
+            # The native check keeps only the conditions, which are code.
+            "activation": _activation_metadata(POLICIES.get(rule.code)),
         }
         for rule in sorted(_builtin_rules(), key=lambda rule: rule.code)
     ]
@@ -183,6 +186,18 @@ def build_rule_set(*, lazy: bool = False) -> RuleSet:
         )
         return RuleSet([_LazyRule(entry) for entry in entries])
     return RuleSet(sorted(_builtin_rules(), key=lambda rule: rule.code))
+
+
+def _activation_metadata(
+    activation: PolicyActivation | None,
+) -> dict[str, Any] | None:
+    if activation is None:
+        return None
+    return {
+        "description": activation.description,
+        "option": activation.option,
+        "required": activation.required,
+    }
 
 
 def _builtin_rules() -> list[RuleContract]:
