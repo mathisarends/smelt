@@ -124,6 +124,15 @@ def test_native_yaml_candidates_use_the_captured_index_and_python_policy(
     )
     git(tmp_path, "init", "-q", "-b", "main")
     git(tmp_path, "add", ".")
+    (tmp_path / "link-target").write_text("compose.yml", encoding="utf-8")
+    oid = git(tmp_path, "hash-object", "-w", "link-target").decode().strip()
+    git(
+        tmp_path,
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        f"120000,{oid},deploy/alias.yml",
+    )
     assert native_git.capture(tmp_path) is not None
     index = capture_index(tmp_path)
     assert index.yaml_paths is not None

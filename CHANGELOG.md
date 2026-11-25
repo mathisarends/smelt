@@ -7,6 +7,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Changed and staged checks now accept repositories containing tracked symlinks.
+  Git snapshots omit link entries and analyze regular files at their tracked paths.
+
 - `smelt check` analyzes in the compiled native core, including `--staged`
   and `--changed`. Reports match the earlier Python analysis. The core parses
   the newest Python grammar whichever Python runs smelt, so a syntax error no

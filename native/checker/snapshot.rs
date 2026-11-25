@@ -52,13 +52,8 @@ impl Snapshot {
             let path = String::from_utf8(entry.filepath.to_vec())
                 .map_err(|_| "non-UTF-8 path in Git snapshot".to_owned())?;
             let mode = entry.mode.value() as u32;
-            if entry.mode.is_tree() || mode == SUBMODULE {
+            if entry.mode.is_tree() || matches!(mode, SUBMODULE | SYMBOLIC_LINK) {
                 continue;
-            }
-            if mode == SYMBOLIC_LINK {
-                return Err(format!(
-                    "changed/staged snapshots do not support symbolic links: {path}"
-                ));
             }
             entries.push((safe_path(&path)?, entry.oid));
         }
