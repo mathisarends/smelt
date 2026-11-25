@@ -23,7 +23,8 @@ use analysis::imports::ImportIndex;
 use analysis::python_target::PythonTargets;
 use analysis::test_syntax::{self, TestModule};
 use config::Request;
-use contracts::Contracts;
+use config::errors::ConfigError;
+use contracts::{Contracts, FacadePolicy};
 use coverage_report::ReportInputs;
 use facade_coverage::{FacadeInputs, uncovered_facades, uncovered_imports};
 use files::{FileIndex, SourceFile};
@@ -114,6 +115,8 @@ struct Outcome {
     coverage: Value,
     modules: usize,
     paths: Vec<String>,
+    /// The SHA-256 of each text a fixable finding was found in, by path.
+    digests: BTreeMap<String, String>,
     /// The baseline revision's findings, each with the text of its line.
     baseline: Option<Vec<Value>>,
 }
@@ -137,7 +140,7 @@ pub fn serve(config: &Path, select: &str) -> i32 {
         .filter(|code| !rules::PORTED.contains(code))
         .collect();
     let result = if unported.is_empty() {
-        run(options)
+        run(options).map_err(Failure::into_message)
     } else {
         Err(format!("rules not ported: {}", unported.join(", ")))
     };
@@ -162,6 +165,7 @@ pub fn serve_check() -> i32 {
         .read_to_string(&mut input)
         .map_err(|error| error.to_string())
         .and_then(|_| serde_json::from_str::<Options>(&input).map_err(|error| error.to_string()))
+        .map_err(Failure::Message)
         .and_then(run);
     let (output, code) = match outcome {
         Ok(outcome) => (
@@ -171,11 +175,26 @@ pub fn serve_check() -> i32 {
                 "coverage": outcome.coverage,
                 "modules": outcome.modules,
                 "paths": outcome.paths,
+                "digests": outcome.digests,
                 "baseline": outcome.baseline,
             }),
             0,
         ),
-        Err(message) => (json!({"error": message}), 2),
+        Err(Failure::Message(message)) => (json!({"error": message}), 2),
+        Err(Failure::Config(error)) => (
+            json!({
+                "error": error.render(),
+                "config": {
+                    "source": error.source,
+                    "issues": error.issues.iter().map(|issue| json!({
+                        "path": issue.path,
+                        "message": issue.message,
+                        "source": issue.source,
+                    })).collect::<Vec<_>>(),
+                },
+            }),
+            2,
+        ),
     };
     match write_output(&output.to_string()) {
         Ok(()) => code,
@@ -220,7 +239,29 @@ fn write_output(output: &str) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
-fn run(options: Options) -> Result<Outcome, String> {
+/// Why a check failed.
+enum Failure {
+    /// A configuration the user must fix, reported with its issues.
+    Config(ConfigError),
+    Message(String),
+}
+
+impl Failure {
+    fn into_message(self) -> String {
+        match self {
+            Self::Config(error) => error.render(),
+            Self::Message(message) => message,
+        }
+    }
+}
+
+impl From<String> for Failure {
+    fn from(message: String) -> Self {
+        Self::Message(message)
+    }
+}
+
+fn run(options: Options) -> Result<Outcome, Failure> {
     if let Some(entries) = &options.search_path {
         analysis::installed::use_search_path(entries.clone());
     }
@@ -257,14 +298,14 @@ fn run(options: Options) -> Result<Outcome, String> {
                     .spawn_scoped(scope, || {
                         baseline_findings(baseline, top, load()?, &options.ignore)
                     })
-                    .map_err(|error| error.to_string())
+                    .map_err(|error| Failure::from(error.to_string()))
             })
             .transpose()?;
         let mut outcome = check(&request, &options.ignore, options.configuration_findings)?;
         if let Some(before) = before {
             let findings = before
                 .join()
-                .map_err(|_| "the baseline check panicked".to_owned())??;
+                .map_err(|_| Failure::from("the baseline check panicked".to_owned()))??;
             outcome.baseline = Some(findings);
         }
         Ok(outcome)
@@ -279,7 +320,7 @@ fn baseline_findings(
     top: &Path,
     mut request: Request,
     ignore: &[String],
-) -> Result<Vec<Value>, String> {
+) -> Result<Vec<Value>, Failure> {
     let snapshot = Snapshot::revision(&baseline.repository, &baseline.revision)?;
     let root = snapshot.locate(top, &request.root)?;
     // A project the revision lacks, or one without files, had no findings.
@@ -348,7 +389,7 @@ fn check(
     request: &Request,
     ignore: &[String],
     configuration_findings: bool,
-) -> Result<Outcome, String> {
+) -> Result<Outcome, Failure> {
     let catalog: Vec<CatalogRule> =
         serde_json::from_str(CATALOG).map_err(|error| error.to_string())?;
     let files = FileIndex::discover(request)?;
@@ -368,6 +409,15 @@ fn check(
         .filter(|rule| !ignored(rule))
         .map(|rule| rule.code.as_str())
         .collect();
+    // Conflicting facade thresholds are a configuration error, not a failed rule.
+    for (code, policy) in [
+        ("ARC008", FacadePolicy::Export),
+        ("IMP001", FacadePolicy::Bundle),
+    ] {
+        if active.iter().any(|rule| rule.code == code) {
+            contracts.facade_policies(policy).map_err(Failure::Config)?;
+        }
+    }
     let report_ordering = active.iter().any(|rule| rule.code == DEFINITION_ORDER);
     let report_test_quality = active
         .iter()
@@ -446,7 +496,7 @@ fn check(
     }) || (configuration_findings
         && meta_rule("MET005").is_some()
         && configured.contains("IMP004"));
-    let (mut violations, suppressed, coverage) = with_analysis_pool(|| {
+    let (mut violations, suppressed, coverage, digests) = with_analysis_pool(|| {
         let parsed = parse_sources(&sources, needs_syntax)?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
@@ -662,6 +712,19 @@ fn check(
             violations.extend(found);
             suppressed += hidden;
         }
+        // The text each fix was planned against, so applying it can tell an edit since.
+        let digests: BTreeMap<String, String> = violations
+            .iter()
+            .filter(|violation| violation.fix.is_some())
+            .filter_map(|violation| {
+                parsed_by_path.get(violation.path.as_str()).map(|parsed| {
+                    (
+                        violation.path.clone(),
+                        analysis::dump::sha256_hex(&parsed.text.text),
+                    )
+                })
+            })
+            .collect();
         // Configuration findings come after suppressions, which cannot reach YAML.
         let mut configuration = Vec::new();
         if let Some((rule, severity)) = meta_rule("MET004").filter(|_| configuration_findings) {
@@ -709,7 +772,7 @@ fn check(
             ordering: report_ordering,
             test_modules: test_modules.as_deref().filter(|_| report_test_quality),
         })?;
-        Ok::<_, String>((violations, suppressed, coverage))
+        Ok::<_, String>((violations, suppressed, coverage, digests))
     })??;
     violations.sort_by(Violation::compare);
     // In a uv workspace every finding names the member that owns its file.
@@ -749,6 +812,7 @@ fn check(
         coverage,
         modules: files.sources.len(),
         paths,
+        digests,
         baseline: None,
     })
 }

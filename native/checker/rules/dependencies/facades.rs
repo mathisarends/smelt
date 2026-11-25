@@ -8,7 +8,10 @@ use serde_json::json;
 const IMPORTER_PREVIEW: usize = 4;
 
 pub fn check(rule: &CatalogRule, context: &GraphContext<'_>) -> Result<Vec<Violation>, String> {
-    let contracts = context.contracts.facade_policies(FacadePolicy::Export)?;
+    let contracts = context
+        .contracts
+        .facade_policies(FacadePolicy::Export)
+        .map_err(|error| error.render())?;
     if contracts.is_empty() {
         return Ok(Vec::new());
     }

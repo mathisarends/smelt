@@ -10,9 +10,17 @@ import pytest
 
 from smelt.analysis.errors import AnalysisError
 from smelt.cli import main
+from smelt.config import ConfigError
 from smelt.diagnostics.render.machine import render_json
 from smelt.engine.check import CheckOptions
-from tests.helpers import check, write_project
+from smelt.engine.fixes import apply_fixes
+from tests.helpers import (
+    MEMBER_BOUNDARIES,
+    check,
+    violations,
+    write_policy_project,
+    write_project,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -144,3 +152,70 @@ def test_source_that_does_not_parse_fails_only_rules_reading_syntax(
     assert names_only.report.violations == []
     with pytest.raises(AnalysisError, match=r"^shop/broken\.py:1: syntax error: "):
         check(tmp_path, replace(BASE, select=("LAY004",)))
+
+
+def test_equally_specific_conflicting_policies_are_a_configuration_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = PROJECT["smelt.yml"].replace(
+        "rules:",
+        "    bundle: {match: shop.domain, min_imports_to_bundle: 2}\n"
+        "            rival: {match: shop.domain, min_imports_to_bundle: 3}\n"
+        "        rules:",
+    )
+    write_project(tmp_path, {**PROJECT, "smelt.yml": config})
+    monkeypatch.setenv("SMELT_CORE", "native")
+
+    with pytest.raises(ConfigError, match="equally specific") as raised:
+        check(tmp_path, replace(BASE, select=("IMP001",)))
+
+    [issue] = raised.value.issues
+    assert issue.path == "architecture.packages.rival.min_imports_to_bundle"
+
+
+def test_fix_leaves_a_source_edited_since_the_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_project(tmp_path, PROJECT)
+    monkeypatch.setenv("SMELT_CORE", "native")
+    options = replace(BASE, select=("LAY004",))
+    outcome = check(tmp_path, options)
+    helpers = tmp_path / "shop/helpers.py"
+    edited = helpers.read_text() + "# Edited after the check.\n"
+    helpers.write_text(edited)
+
+    _, fixed = apply_fixes(outcome, lambda: check(tmp_path, options))
+
+    assert fixed.files == []
+    assert "changed since the check" in fixed.skipped[0]["reason"]
+    assert helpers.read_text() == edited
+
+
+def test_member_architecture_follows_only_its_own_import_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_policy_project(
+        tmp_path,
+        {
+            **MEMBER_BOUNDARIES,
+            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
+            + "  import_graph: {transitive: true}\n",
+            "packages/core/src/core/model.py": "import requests\n",
+            "services/api/smelt.yml": """
+                architecture:
+                  layers:
+                    domain: {path: domain, third_party: {default: deny}}
+                    infra: {path: infra}
+                """,
+            "services/api/src/api/domain/remote.py": "import core.model\n",
+            "services/api/src/api/domain/local.py": "import api.infra.client\n",
+            "services/api/src/api/infra/client.py": "import requests\n",
+        },
+    )
+    options = CheckOptions(select=("ARC003",), use_cache=False)
+    expected = violations(tmp_path, options)
+
+    monkeypatch.setenv("SMELT_CORE", "native")
+
+    assert violations(tmp_path, options) == expected
+    assert [finding.source_module for finding in expected] == ["api.domain.local"]

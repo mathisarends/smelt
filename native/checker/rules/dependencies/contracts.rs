@@ -91,7 +91,11 @@ pub fn check_bundles(
     context: &GraphContext<'_>,
 ) -> Result<Vec<Violation>, String> {
     let mut found = Vec::new();
-    for contract in context.contracts.facade_policies(FacadePolicy::Bundle)? {
+    let contracts = context
+        .contracts
+        .facade_policies(FacadePolicy::Bundle)
+        .map_err(|error| error.render())?;
+    for contract in contracts {
         let Some(threshold) = contract.spec.min_imports_to_bundle else {
             continue;
         };
