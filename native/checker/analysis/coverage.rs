@@ -7,6 +7,7 @@ use crate::checker::config::workspace::member_directories;
 use crate::checker::config::{Exclusion, Project};
 use crate::checker::files::{FileIndex, SourceFile, is_identifier, python_files, relative_path};
 use crate::checker::patterns::PathPattern;
+use crate::checker::profile;
 use crate::checker::source::ParsedSource;
 use crate::checker::vfs;
 use ruff_python_ast::{
@@ -132,6 +133,7 @@ impl Coverage {
         model: &ArchitectureModel<'_>,
         inputs: &CoverageInputs<'_>,
     ) -> Result<Self, String> {
+        let _span = profile::span("coverage inventory");
         let project = inputs.project;
         let base = paths::resolve(&files.root);
         let mut roots: HashSet<PathBuf> = project

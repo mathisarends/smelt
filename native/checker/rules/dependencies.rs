@@ -16,6 +16,7 @@ use crate::checker::config::TestPolicy;
 use crate::checker::contracts::{Contracts, ResolvedContract};
 use crate::checker::files::{FileIndex, SourceFile};
 use crate::checker::patterns::is_within;
+use crate::checker::profile;
 use crate::checker::settings::CatalogRule;
 use crate::checker::source::ParsedSource;
 use crate::checker::violation::{ImportLink, Violation};
@@ -185,6 +186,7 @@ pub fn findings<'r>(
     let boundary = boundary_imports(context);
     let mut found = Vec::new();
     for rule in rules {
+        let _span = profile::span(format!("rule {}", rule.code));
         let raised = match rule.code.as_str() {
             "ARC001" => boundaries::check_layers(rule, context, &boundary),
             "ARC002" => boundaries::check_cross_feature(rule, context, &boundary),

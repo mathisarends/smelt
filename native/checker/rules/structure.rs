@@ -26,6 +26,7 @@ use crate::checker::config::{FileNaming, Project, TestPolicy};
 use crate::checker::contracts::Contracts;
 use crate::checker::files::{FileIndex, SourceFile};
 use crate::checker::patterns::PathPattern;
+use crate::checker::profile;
 use crate::checker::settings::CatalogRule;
 use crate::checker::source::ParsedSource;
 use crate::checker::violation::Violation;
@@ -122,6 +123,7 @@ pub fn findings<'r>(
 ) -> Result<Vec<Violation>, String> {
     let mut found = Vec::new();
     for rule in rules {
+        let _span = profile::span(format!("rule {}", rule.code));
         let raised = match rule.code.as_str() {
             "ARC011" => layout::check_unknown_layers(context),
             "ARC012" => layout::check_unclassified(context),
