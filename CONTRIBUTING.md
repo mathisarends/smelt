@@ -350,6 +350,14 @@ reproduce it locally with committed changes, run
 Setup and the first edit per workload are outside the median. The job fails
 when the candidate median exceeds the base by both 25% and 0.35 seconds.
 
+The check-latency job times `smelt check` itself: the strict full check of the
+repository and full, staged and changed checks of a generated layered project
+with mirrored tests. It fails when a median exceeds the base by both 25% and 0.1
+seconds. While iterating, time existing installations without rebuilding:
+`uv run python scripts/benchmark_check.py --smelt base=<path> --smelt candidate=.venv/Scripts/smelt --output check-times.json`.
+Set `SMELT_PROFILE=1` on any check to print how long each core phase and global
+rule took to stderr; the output file also records these profiles.
+
 ## Publishing a release
 
 The `.github/workflows/release.yml` workflow publishes `smelt-cli` to PyPI when a

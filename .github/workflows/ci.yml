@@ -64,6 +64,33 @@ jobs:
           name: staged-hook-times
           path: hook-times.json
 
+  check-latency:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      # The release build of the native client is the same in these jobs.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: native
+          save-if: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Compare check latency against the PR base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: uv run --frozen python scripts/benchmark_check.py --base "$BASE_SHA" --output check-times.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: check-times
+          path: check-times.json
+
   test:
     name: Test (Python ${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
