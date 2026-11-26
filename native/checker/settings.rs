@@ -11,6 +11,8 @@ const STRICT_COVERAGE: &str = "ARC013";
 
 #[derive(Deserialize)]
 pub struct CatalogRule {
+    #[serde(skip)]
+    pub declaration: Option<super::rules::project::Declaration>,
     pub code: String,
     pub name: String,
     pub category: String,
@@ -172,7 +174,7 @@ impl<'a> Settings<'a> {
     pub fn active(&self, select: &[String]) -> Vec<&'a CatalogRule> {
         self.catalog
             .iter()
-            .filter(|rule| PORTED.contains(&rule.code.as_str()))
+            .filter(|rule| rule.declaration.is_some() || PORTED.contains(&rule.code.as_str()))
             .filter(|rule| self.is_active(rule, select))
             .collect()
     }
@@ -183,7 +185,7 @@ impl<'a> Settings<'a> {
         }
         let selected = select.iter().any(|prefix| {
             let wanted = prefix.trim().to_uppercase();
-            wanted == ALL_RULES || rule.code.starts_with(&wanted)
+            wanted == ALL_RULES || rule.code == prefix.trim() || rule.code.starts_with(&wanted)
         });
         let setting = self.global_value(rule);
         let package_enabled = self

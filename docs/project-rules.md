@@ -1,11 +1,8 @@
-# Proposal for project-defined rules
+# Project-defined rules
 
-Status: proposed API for review. The examples describe a future Smelt release.
-
-A team wants calls to the system clock in its domain layer to go through its
-own clock API. The team already tells Smelt which modules belong to that
-layer. It should be able to contribute the convention in an ordinary project
-PR and use the same rule in checks and writing guides.
+Define a local rule when your project needs its own convention. For example,
+require domain modules to read the time through your team's clock API. The
+matcher can use the layer assignments already declared in your policy.
 
 ## Define a rule
 
@@ -23,7 +20,7 @@ domain_clock = Rule(
 rules = [domain_clock]
 ```
 
-`Rule` and `calls` form the proposed public API. The module exports its rules
+Import `Rule` and `calls` by name from `smelt.rules`. The module exports its rules
 as a list named `rules`. The qualified name identifies a rule across files and
 commands, so renaming the Python variable preserves suppressions and debt.
 The finding points to the offending call and shows `message`.
@@ -47,8 +44,7 @@ exports and then validates the rule selection. Loading a file makes its rules
 available for `smelt rules` and `smelt explain`. The usual selection and
 severity settings determine which findings appear in a check. An unknown
 rule, missing plugin file, invalid export or duplicate identity is a
-configuration error. Errors should identify the originating file and name
-both declarations for a collision.
+configuration error. Use a namespace distinct from built-in families.
 
 ## Execute the matcher in Rust
 
@@ -62,7 +58,7 @@ reporting pipeline. Projects without plugins keep the native fast path.
 
 The first matcher covers direct, statically resolved calls through ordinary
 imports and aliases. Unresolved receivers and shadowed names are skipped.
-These cases specify the first end-to-end test, with the rule selected as a
+These examples assume the rule is selected as a
 warning and `--fail-on warning`:
 
 | Module layer | Source | Expected result |
@@ -72,26 +68,26 @@ warning and `--fail-on warning`:
 | domain | `invoice.now()` on an unknown receiver | Clean, exit 0 |
 | domain | `DT.now()` where a parameter named `DT` shadows the import | Clean, exit 0 |
 
-For `--staged`, read the rule file, configuration and analyzed source from
-the Git index. A regression test should stage the example, change the target
-in the working copy and verify that the staged check still reports the
-original target. Changed and staged comparisons must follow the same policy
-selection as built-ins. Include the resolved matcher in the policy identity
-so editing the plugin alone can change that identity.
+For staged checks, Smelt reads the configuration, plugin declarations and
+analyzed Python files from the Git index. Changed checks compare both source
+snapshots using the same current rule definitions. The qualified rule name is
+also its report code. Use it in inline suppressions, debt and CLI selectors.
 
-## Decisions for implementation review
+## Supported declarations
 
-- **Loading Python declarations.** The example needs only an SDK import,
-  named declarations and a list. A static loader for this subset would work
-  directly on captured source and could point to unsupported expressions.
-  Importing a trusted Python module would also allow helpers and factories,
-  but executes project tooling code and requires snapshot-aware dependency
-  loading. Decide which authoring forms to promise before publishing the API.
-- **Rule identity in reports.** Use the qualified name for selection,
-  explanations and ignore comments. Specify how the existing machine-readable
-  code field and debt fingerprints represent that identity. Cover two projects'
-  rules with the same short name and reserve built-in names.
-- **First delivery.** Exercise this single matcher through the real CLI,
-  including a staged check, a scoped guide and an inline suppression. The
-  results should agree through the native entry point and the Python CLI.
-  Use a second concrete project convention to choose the next matcher.
+Use literal strings, one assignment per rule and a final `rules = [...]`
+export list. The loader reads these declarations as Python syntax. It never
+imports the project module or runs callbacks. Helpers, import aliases, relative
+call targets and dynamic expressions are outside this declaration format.
+Plugin paths must resolve inside the project. A root policy can inherit its
+plugin list from a local `extends` base.
+
+`calls.to("package.function")` checks production modules; adding
+`.in_layer("domain")` restricts it to that architecture layer. The checker
+resolves unambiguous module-level imports. It skips names rebound anywhere in
+the file and wildcard imports. This conservative rule can leave calls
+unreported even when shadowing occurs in a different function.
+
+Inspect the registered rule with `smelt explain acme/domain-clock`, run it
+on its own with `smelt check --select acme/domain-clock`, and preview its
+writing instruction with `smelt context app.domain.service --guide`.

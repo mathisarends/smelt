@@ -49,6 +49,7 @@ def test_unused_additive_options_preserve_released_policy_hashes(
     legacy["architecture"]["import_graph"].pop("type_checking_cycles")
     legacy["architecture"].pop("members")
     legacy["architecture"]["layers"]["domain"].pop("modules")
+    legacy.pop("plugins")
     legacy.pop("members")
     legacy["project"].pop("workspace")
     expected = (

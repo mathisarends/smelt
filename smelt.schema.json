@@ -4990,6 +4990,14 @@
             "off"
           ]
         },
+        "project": {
+          "$ref": "#/$defs/BroadRuleSetting",
+          "title": "project: every rule in the project family",
+          "description": "project: every rule in the project family. Members: . Disable or cap active rules; individual entries take precedence.",
+          "examples": [
+            "off"
+          ]
+        },
         "ALL": {
           "$ref": "#/$defs/BroadRuleSetting",
           "title": "ALL: every rule in the catalog",
@@ -5880,6 +5888,9 @@
           "examples": [
             "warning"
           ],
+          "$ref": "#/$defs/RuleSetting"
+        },
+        "^(?!(?:architecture|imports|layout|visibility|modeling|typing|complexity|idioms|frameworks|tests|meta|project)/)[a-z][a-z0-9]*(?:-[a-z0-9]+)*/[a-z][a-z0-9]*(?:-[a-z0-9]+)*$": {
           "$ref": "#/$defs/RuleSetting"
         }
       },
@@ -7364,6 +7375,9 @@
             "warning"
           ],
           "$ref": "#/$defs/RuleSetting"
+        },
+        "^(?!(?:architecture|imports|layout|visibility|modeling|typing|complexity|idioms|frameworks|tests|meta|project)/)[a-z][a-z0-9]*(?:-[a-z0-9]+)*/[a-z][a-z0-9]*(?:-[a-z0-9]+)*$": {
+          "$ref": "#/$defs/RuleSetting"
         }
       },
       "additionalProperties": false
@@ -7375,6 +7389,14 @@
       "const": 2,
       "title": "Version",
       "type": "integer"
+    },
+    "plugins": {
+      "description": "Local Python rule declaration files, relative to the declaring policy.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Plugins",
+      "type": "array"
     },
     "project": {
       "$ref": "#/$defs/ProjectConfig"

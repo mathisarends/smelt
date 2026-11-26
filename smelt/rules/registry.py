@@ -9,13 +9,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 from smelt.analysis.context import Index
+from smelt.config.errors import ConfigError, ConfigIssue
 from smelt.diagnostics.fixes import FixAvailability
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import RuleSet
+from smelt.rules.project import ProjectRule
 
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
+    from smelt.config.loader import LoadedConfig
     from smelt.rules.activation import PolicyActivation
     from smelt.rules.base import GuideTarget, RuleContract, RuleDoc
 
@@ -180,13 +183,28 @@ def catalog_metadata() -> list[dict[str, Any]]:
     ]
 
 
-def build_rule_set(*, lazy: bool = False) -> RuleSet:
+def build_rule_set(
+    loaded: LoadedConfig | None = None, *, lazy: bool = False
+) -> RuleSet:
+    custom: list[RuleContract] = []
+    if loaded is not None:
+        for declaration in loaded.project_rules:
+            if declaration.name.split("/", 1)[0] in Category:
+                raise ConfigError(
+                    [
+                        ConfigIssue(
+                            "plugins", f"reserved rule namespace: {declaration.name}"
+                        )
+                    ],
+                    loaded.path.name,
+                )
+            custom.append(ProjectRule(declaration))
     if lazy:
         entries = json.loads(
             Path(__file__).with_name("catalog.json").read_text(encoding="utf-8")
         )
-        return RuleSet([_LazyRule(entry) for entry in entries])
-    return RuleSet(sorted(_builtin_rules(), key=lambda rule: rule.code))
+        return RuleSet([*(_LazyRule(entry) for entry in entries), *custom])
+    return RuleSet(sorted([*_builtin_rules(), *custom], key=lambda rule: rule.code))
 
 
 def _activation_metadata(

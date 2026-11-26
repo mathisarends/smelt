@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -10,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from smelt.cli import main
 from tests.helpers import write_project
 
 NATIVE = Path(sysconfig.get_path("scripts")) / (
@@ -55,6 +57,138 @@ COMPARISONS = {
     "scoped": ("--changed", "shop", "--format", "concise"),
 }
 _FALLBACK = b"smelt trace: the Python CLI checks:"
+
+_CLOCK_PLUGIN = """from smelt.rules import Rule, calls
+
+clock = Rule(name="acme/domain-clock",
+             match=calls.to("datetime.datetime.now").in_layer("domain"),
+             message="Direct clock read", guide="Use acme.clock.now().")
+rules = [clock]
+"""
+
+
+@pytest.fixture
+def clock_project(tmp_path: Path) -> Path:
+    return write_project(
+        tmp_path,
+        {
+            "smelt.yml": (
+                "version: 2\nproject: {root_packages: [app]}\n"
+                "extends: policy/base.yml\n"
+                "architecture: {layers: {domain: {path: domain}, infra: {path: infra}}}\n"
+                "rules: {acme/domain-clock: warning}\n"
+            ),
+            "policy/base.yml": "plugins: [rules.py]\n",
+            "policy/rules.py": _CLOCK_PLUGIN,
+            "app/__init__.py": "",
+            "app/domain/__init__.py": "",
+            "app/infra/__init__.py": "",
+            "app/domain/service.py": (
+                "from datetime import datetime as DT\n"
+                "now = DT.now()\n"
+                "known = DT.now()  # smelt: ignore[acme/domain-clock] -- explicit exception\n"
+            ),
+            "app/domain/other.py": "from datetime import datetime as DT\ndef other(DT): return DT.now()\n",
+            "app/infra/service.py": "from datetime import datetime as DT\nnow = DT.now()\n",
+        },
+    )
+
+
+def test_project_calls_report_the_alias_and_respect_layer_shadowing_and_ignore(
+    clock_project: Path,
+) -> None:
+    args = ("--select", "acme/domain-clock", "--format", "json", "--fail-on", "warning")
+    code, output, _ = _check(clock_project, args, native=True)
+    assert (code, output) == _check(clock_project, args, native=False)[:2]
+    assert code == 1, output
+    report = json.loads(output)
+    assert report["scope"]["rules"] == ["acme/domain-clock"]
+    assert [
+        (v["code"], v["path"], v["line"], v["severity"]) for v in report["violations"]
+    ] == [("acme/domain-clock", "app/domain/service.py", 2, "warning")]
+
+
+def test_staged_project_rule_and_source_come_from_the_index(
+    clock_project: Path,
+) -> None:
+    source = clock_project / "app/domain/service.py"
+    contents = source.read_bytes()
+    source.write_bytes(b"")
+    _git(clock_project, "init", "-q")
+    _git(clock_project, "add", "-A")
+    _git(clock_project, "commit", "-qm", "base")
+    source.write_bytes(contents)
+    _git(clock_project, "add", "app/domain/service.py")
+    (clock_project / "policy/rules.py").write_text("rules = []\n", encoding="utf-8")
+    source.write_bytes(b"")
+    code, output, _ = _check(
+        clock_project,
+        ("--staged", "--format", "json", "--fail-on", "warning"),
+        native=True,
+    )
+    assert code == 1, output
+    assert [v["code"] for v in json.loads(output)["violations"]] == [
+        "acme/domain-clock"
+    ]
+
+
+def test_exported_rules_need_individual_activation(clock_project: Path) -> None:
+    plugin = clock_project / "policy/rules.py"
+    second = (
+        'other = Rule(name="team/clock", match=calls.to("datetime.datetime.now").in_layer("domain"), '
+        'message="Direct read", guide="Use the clock.")\n'
+        "rules = [clock, other]"
+    )
+    plugin.write_text(
+        _CLOCK_PLUGIN.replace("rules = [clock]", second), encoding="utf-8"
+    )
+    _, output, _ = _check(clock_project, ("--format", "json"), native=True)
+    assert "team/clock" not in json.loads(output)["scope"]["rules"]
+    _, selected, _ = _check(
+        clock_project, ("--select", "team/clock", "--format", "json"), native=True
+    )
+    report = json.loads(selected)
+    assert report["scope"]["rules"] == ["team/clock"]
+    assert [entry["line"] for entry in report["violations"]] == [2, 3]
+
+
+def test_project_rule_discovery_and_scoped_guide(
+    clock_project: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config = str(clock_project / "smelt.yml")
+    assert (
+        main(["--config", config, "explain", "acme/domain-clock", "--format", "json"])
+        == 0
+    )
+    assert json.loads(capsys.readouterr().out)["canonical"] == "Use acme.clock.now()."
+    assert main(["--config", config, "rules", "--format", "json"]) == 0
+    assert "acme/domain-clock" in {
+        r["name"] for r in json.loads(capsys.readouterr().out)
+    }
+    assert main(["--config", config, "context", "app/domain/future.py", "--guide"]) == 0
+    assert "Use acme.clock.now()." in capsys.readouterr().out
+    assert main(["--config", config, "context", "app/infra/future.py", "--guide"]) == 0
+    assert "Use acme.clock.now()." not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("contents", "error"),
+    [
+        ("rules = [missing]", "previously declared rule"),
+        (_CLOCK_PLUGIN.replace("[clock]", "[clock, clock]"), "duplicate rule"),
+        ("raise RuntimeError('executed')", "expected a rule declaration"),
+    ],
+)
+def test_invalid_project_rule_is_a_config_error(
+    clock_project: Path,
+    contents: str,
+    error: str,
+    *,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (clock_project / "policy/rules.py").write_text(contents, encoding="utf-8")
+    assert main(["--config", str(clock_project / "smelt.yml"), "check"]) == 2
+    assert error in capsys.readouterr().err
 
 
 def _check(

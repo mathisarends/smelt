@@ -21,6 +21,7 @@ mod domain_exceptions;
 mod durations;
 mod enum_styles;
 mod exports;
+pub(super) mod project;
 pub(crate) use exports::explicit_exports;
 mod frozen_collections;
 mod generic_syntax;

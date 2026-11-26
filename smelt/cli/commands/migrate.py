@@ -45,8 +45,8 @@ def config_migrate(args: argparse.Namespace, console: Console, cwd: Path) -> int
         )
     # A version 2 file cannot load beside version 1 bases or members, so all migrate together.
     files = _migrate_files(path)
-    rules = build_rule_set(lazy=True)
     loaded = load_config(path, store=_preview(files))
+    rules = build_rule_set(loaded, lazy=True)
     # A broad selector can depend on an implicit activation we have yet to name.
     settings = RuleSettings(rules, loaded, validate=False)
     root = files.get(loaded.path) or files.setdefault(loaded.path, _File(loaded.path))

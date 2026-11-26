@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from smelt.config.models import SmeltConfig
+    from smelt.config.project_rules import Rule
 
 
 def effective_coverage(
@@ -19,6 +21,7 @@ def effective_coverage(
     facts: dict[str, Any],
     *,
     include_inventory: bool = False,
+    project_rules: tuple[Rule, ...] = (),
 ) -> dict[str, Any]:
     """The report's coverage: the analysis facts under the policy that produced them."""
     project = config.project
@@ -30,7 +33,7 @@ def effective_coverage(
             or any(member.governs_architecture for member in config.members.values())
         ),
         **{key: facts[key] for key in _SUMMARY},
-        "policy_hash": policy_hash(config),
+        "policy_hash": policy_hash(config, project_rules=project_rules),
         "rules": config.model_dump(mode="json")["rules"],
         "root_packages": list(project.root_packages),
         "source_roots": list(project.source_roots),
@@ -101,9 +104,13 @@ def effective_coverage(
     return report
 
 
-def policy_hash(config: SmeltConfig) -> str:
+def policy_hash(config: SmeltConfig, *, project_rules: tuple[Rule, ...] = ()) -> str:
     """Equal for two reports checked under the same resolved config."""
     policy = config.model_dump(mode="json")
+    if project_rules:
+        policy["project_rules"] = [asdict(rule) for rule in project_rules]
+    if not config.plugins:
+        policy.pop("plugins", None)
     # Neutral additive settings preserve policy hashes in released reports.
     if not config.structure.canonical_exports:
         policy["architecture"].pop("canonical_exports", None)

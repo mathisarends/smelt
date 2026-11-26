@@ -38,6 +38,7 @@ class Category(StrEnum):
     FRAMEWORKS = "frameworks"
     TESTS = "tests"
     META = "meta"
+    PROJECT = "project"
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,4 +133,6 @@ class Violation:
 
 
 def docs_url(code: str) -> str:
+    if "/" in code:
+        return f"{DOCS_BASE_URL.removesuffix('/rules')}/project-rules.md"
     return f"{DOCS_BASE_URL}/{code}.md"

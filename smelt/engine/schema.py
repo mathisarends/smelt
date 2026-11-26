@@ -43,6 +43,12 @@ def config_json_schema() -> dict[str, Any]:
         if getattr(rule, "scope", "source") == "source":
             source_properties[rule.name] = definition
             source_codes[f"^{rule.code}$"] = definition
+    custom_name = (
+        r"^(?!(?:"
+        + "|".join(family.value for family in Category)
+        + r")/)[a-z][a-z0-9]*(?:-[a-z0-9]+)*/[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    )
+    codes[custom_name] = source_codes[custom_name] = {"$ref": "#/$defs/RuleSetting"}
     for family in Category:
         members = [rule for rule in rules if rule.category == family]
         source_members = [
