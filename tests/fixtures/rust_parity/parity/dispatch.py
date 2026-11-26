@@ -94,3 +94,13 @@ def nested(value):
                     pass
         finally:
             pass
+
+
+def exiting_guards(event):
+    if isinstance(event, Started):
+        return start(event)
+    if isinstance(event, Delta | Progress) and event.ok:
+        return update(event)
+    if isinstance(event, Finished):
+        raise Done(event)
+    raise Unknown(event)

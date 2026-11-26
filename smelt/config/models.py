@@ -734,7 +734,7 @@ class TypeDispatchConfig(_Model):
     min_branches: int = Field(
         default=3,
         ge=2,
-        description="Minimum number of type-tested if/elif branches over the same simple name before IDM002 suggests match/case.",
+        description="Minimum number of type-tested if/elif branches, or adjacent guards that each return or raise, over the same simple name before IDM002 suggests match/case.",
     )
 
 
