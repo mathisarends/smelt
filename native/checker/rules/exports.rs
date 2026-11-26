@@ -173,6 +173,11 @@ fn is_dunder_all(expression: &Expr) -> bool {
 
 /// The names `__all__` declares; `None` means a dynamic declaration.
 pub(crate) fn explicit_exports(tree: &ModModule) -> Option<HashSet<&str>> {
+    static_export_declarations(tree).map(|(exports, _)| exports)
+}
+
+/// Static exports and the number of assignments to the export list.
+pub(super) fn static_export_declarations(tree: &ModModule) -> Option<(HashSet<&str>, usize)> {
     let mut exports = HashSet::new();
     let mut handled = 0;
     for statement in &tree.body {
@@ -215,7 +220,7 @@ pub(crate) fn explicit_exports(tree: &ModModule) -> Option<HashSet<&str>> {
     }
     let mut uses = DunderAllUses { count: 0 };
     uses.visit_body(&tree.body);
-    (uses.count == handled).then_some(exports)
+    (uses.count == handled).then_some((exports, handled))
 }
 
 struct DunderAllUses {

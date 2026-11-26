@@ -1704,5 +1704,22 @@
     "fix_availability": "none",
     "summary": "Tests read a public attribute with no observed production access outside its visibility boundary.",
     "activation": null
+  },
+  {
+    "target": "smelt.rules.structure.deep_reexports:DeepPackageReexport",
+    "code": "VIS011",
+    "name": "visibility/deep-package-reexport",
+    "category": "visibility",
+    "default_severity": "warning",
+    "requires": [
+      "files",
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "architecture_scoped": false,
+    "scope": "source",
+    "fix_availability": "none",
+    "summary": "A package initializer re-exports a name through a deeper import path.",
+    "activation": null
   }
 ]

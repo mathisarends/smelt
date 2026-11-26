@@ -100,5 +100,6 @@
 | [VIS008](VIS008.md) | visibility/reexport-convention | visibility | explicit | warning |
 | [VIS009](VIS009.md) | visibility/test-only-public-function | visibility | explicit | warning |
 | [VIS010](VIS010.md) | visibility/test-only-public-attribute | visibility | explicit | warning |
+| [VIS011](VIS011.md) | visibility/deep-package-reexport | visibility | explicit | warning |
 
 `smelt rules` prints the same catalog in the terminal.

@@ -7,6 +7,8 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Enable [`visibility/deep-package-reexport` (VIS011)](docs/rules/VIS011.md) to
+  report initializer re-exports that bypass the immediate subpackage's API.
 - Opt in to [LAY013](docs/rules/LAY013.md) to enforce one uv workspace package
   layout. Set `project.workspace_layout` to `flat` for `member/member` or `src`
   for `member/src/member`, and enable `layout/workspace-layout-convention`.
