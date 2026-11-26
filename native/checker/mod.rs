@@ -279,6 +279,7 @@ pub fn serve_files() -> i32 {
                 exclusions: Vec::new(),
                 python_version: None,
                 uv_workspace: false,
+                workspace_layout: None,
             };
             let files = FileIndex::scan(&request.root, &project)?;
             let mut inventory = files.inventory(request.yaml);

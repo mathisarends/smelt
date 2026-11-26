@@ -50,6 +50,7 @@
 | [LAY010](LAY010.md) | layout/reexport-only-module | layout | explicit | hint |
 | [LAY011](LAY011.md) | layout/misplaced-module-logger | layout | explicit | warning |
 | [LAY012](LAY012.md) | layout/redundant-comment | layout | explicit | hint |
+| [LAY013](LAY013.md) | layout/workspace-layout-convention | layout | explicit | error |
 | [MET001](MET001.md) | meta/unused-suppression | meta | default | warning |
 | [MET002](MET002.md) | meta/missing-suppression-reason | meta | default | error |
 | [MET003](MET003.md) | meta/resolved-debt | meta | default | warning |

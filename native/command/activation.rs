@@ -101,6 +101,9 @@ fn condition(code: &str) -> Option<Condition> {
             let naming = &config["__structure__"]["file_naming"];
             is_set(&naming["yaml_extension"]) || is_set(&naming["compose_basename"])
         }),
+        "LAY013" => Condition::Config(|config| {
+            config["project"]["workspace"] == "uv" && is_set(&config["project"]["workspace_layout"])
+        }),
         "ARC001" => Condition::Config(|config| truthy(&config["architecture"]["layers"])),
         "ARC002" => Condition::Config(|config| is_set(&config["architecture"]["features"])),
         "ARC003" => Condition::Config(|config| {

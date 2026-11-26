@@ -857,6 +857,26 @@
     "activation": null
   },
   {
+    "target": "smelt.rules.structure.workspace_layout:WorkspaceLayoutConvention",
+    "code": "LAY013",
+    "name": "layout/workspace-layout-convention",
+    "category": "layout",
+    "default_severity": "error",
+    "requires": [
+      "files"
+    ],
+    "enabled_by_default": false,
+    "architecture_scoped": false,
+    "scope": "project",
+    "fix_availability": "none",
+    "summary": "A top-level package deviates from the uv workspace's folder layout.",
+    "activation": {
+      "description": "project.workspace is uv and project.workspace_layout selects flat or src.",
+      "option": null,
+      "required": true
+    }
+  },
+  {
     "target": "smelt.rules.meta:UnusedSuppression",
     "code": "MET001",
     "name": "meta/unused-suppression",

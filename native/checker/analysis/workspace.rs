@@ -201,6 +201,16 @@ pub fn member_paths(files: &FileIndex) -> Result<Vec<String>, String> {
         .collect())
 }
 
+/// The distribution name of the workspace root project, if there is one.
+pub fn root_project_name(files: &FileIndex) -> Result<Option<String>, String> {
+    let data = read_project(files, ".")?;
+    Ok(data
+        .get("project")
+        .and_then(|project| project.get("name"))
+        .and_then(Value::as_str)
+        .map(str::to_owned))
+}
+
 /// The innermost member holding `path`, `.` for files of the root.
 pub fn member_for_path<'m>(members: &'m [String], path: &str) -> &'m str {
     members

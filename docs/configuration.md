@@ -195,6 +195,26 @@ architecture:
 - Top-level package names must be unique across members. `root_packages`
   defaults to every member's packages; an explicit list narrows them.
 
+Set a common package layout in the workspace root and enforce it with
+[LAY013](rules/LAY013.md).
+
+```yaml
+project:
+  workspace: uv
+  workspace_layout: src
+rules:
+  architecture/undeclared-member-dependency: error
+  layout/workspace-layout-convention: error
+```
+
+With `src`, a member at `services/backend` places its top-level package at
+`services/backend/src/backend/`. With `flat`, the same package belongs at
+`services/backend/backend/`. The check compares each selected top-level package
+with the member's directory name. For the root project it uses `project.name`
+from `pyproject.toml`. A name such as `core-lib` becomes `core_lib` in the import
+path. For a workspace with both layouts, omit `source_roots` during migration so
+Smelt discovers packages in both types of members.
+
 Keep each member's architecture and exceptions in its own `smelt.yml`. A member
 without this file still inherits the shared root settings.
 

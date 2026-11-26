@@ -16,6 +16,7 @@ mod private_access;
 mod required_modules;
 mod test_location;
 mod untested;
+mod workspace_layout;
 
 use crate::checker::analysis::architecture::ArchitectureModel;
 use crate::checker::analysis::coverage::Coverage;
@@ -35,10 +36,10 @@ use rayon::prelude::*;
 use serde_json::Value;
 use std::sync::OnceLock;
 
-pub const STRUCTURE_RULES: [&str; 25] = [
+pub const STRUCTURE_RULES: [&str; 26] = [
     "ARC011", "ARC012", "ARC013", "ARC014", "CPX001", "CPX004", "IMP003", "IMP004", "LAY001",
-    "LAY003", "LAY005", "LAY007", "LAY009", "MOD001", "MOD002", "MOD009", "TST001", "TST012",
-    "TYP005", "VIS001", "VIS002", "VIS004", "VIS005", "VIS009", "VIS010",
+    "LAY003", "LAY005", "LAY007", "LAY009", "LAY013", "MOD001", "MOD002", "MOD009", "TST001",
+    "TST012", "TYP005", "VIS001", "VIS002", "VIS004", "VIS005", "VIS009", "VIS010",
 ];
 
 /// The structure rules that read discovered tests.
@@ -171,6 +172,7 @@ fn rule_findings<'r>(
             "LAY005" => members::check_static_helpers(context),
             "LAY007" => file_naming::check(context),
             "LAY009" => naming::check_redundant_names(context),
+            "LAY013" => workspace_layout::check(context)?,
             "MOD001" => enum_values::check(context),
             "MOD002" => naming::check_base_affixes(context),
             "MOD009" => class_names::check(context),
