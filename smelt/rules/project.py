@@ -28,9 +28,11 @@ class ProjectRule:
 
     def explain(self) -> RuleDoc:
         rule = self._declaration
+        # A project rule states a finding and a guide; it has no separate
+        # rationale or preferred example, so those sections stay empty.
         return RuleDoc(
             summary=rule.message,
-            rationale=rule.message,
+            rationale="",
             bad=f"{rule.match.target}()",
             good="",
             fix=rule.guide,

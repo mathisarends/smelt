@@ -1302,7 +1302,7 @@ class SmeltConfig(_Model):
     version: Literal[2]
     plugins: list[str] = Field(
         default_factory=list,
-        description="Local Python rule declaration files, relative to the declaring policy.",
+        description="Local Python rule modules that Smelt runs, relative to the declaring policy.",
     )
     project: ProjectConfig
     architecture: ArchitectureConfig = Field(default_factory=ArchitectureConfig)

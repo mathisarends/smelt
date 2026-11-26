@@ -108,6 +108,30 @@ def test_project_calls_report_the_alias_and_respect_layer_shadowing_and_ignore(
     ] == [("acme/domain-clock", "app/domain/service.py", 2, "warning")]
 
 
+def test_project_calls_resolve_module_and_class_imports(clock_project: Path) -> None:
+    sources = {
+        "module.py": "import datetime\nnow = datetime.datetime.now()\n",
+        "alias.py": "import datetime as dt\nnow = dt.datetime.now()\n",
+        "name.py": "from datetime import datetime\nnow = datetime.now()\n",
+        "other.py": "from datetime import date\ntoday = date.today()\n",
+    }
+    for name, source in sources.items():
+        (clock_project / "app/domain" / name).write_text(source, encoding="utf-8")
+    (clock_project / "app/domain/service.py").write_text("", encoding="utf-8")
+
+    _, output, _ = _check(
+        clock_project,
+        ("--select", "acme/domain-clock", "--format", "json"),
+        native=True,
+    )
+
+    assert sorted((v["path"], v["line"]) for v in json.loads(output)["violations"]) == [
+        ("app/domain/alias.py", 2),
+        ("app/domain/module.py", 2),
+        ("app/domain/name.py", 2),
+    ]
+
+
 def test_staged_project_rule_and_source_come_from_the_index(
     clock_project: Path,
 ) -> None:
@@ -161,6 +185,11 @@ def test_project_rule_discovery_and_scoped_guide(
         == 0
     )
     assert json.loads(capsys.readouterr().out)["canonical"] == "Use acme.clock.now()."
+    assert main(["--config", config, "explain", "acme/domain-clock"]) == 0
+    explained = capsys.readouterr().out
+    assert "How to fix:\n  Use acme.clock.now()." in explained
+    assert "Why:" not in explained
+    assert "Good:" not in explained
     assert main(["--config", config, "rules", "--format", "json"]) == 0
     assert "acme/domain-clock" in {
         r["name"] for r in json.loads(capsys.readouterr().out)
@@ -174,9 +203,13 @@ def test_project_rule_discovery_and_scoped_guide(
 @pytest.mark.parametrize(
     ("contents", "error"),
     [
-        ("rules = [missing]", "previously declared rule"),
+        ("rules = [missing]", "rules.py: line 1: NameError"),
         (_CLOCK_PLUGIN.replace("[clock]", "[clock, clock]"), "duplicate rule"),
-        ("raise RuntimeError('executed')", "expected a rule declaration"),
+        ("raise RuntimeError('failed')", "rules.py: line 1: RuntimeError: failed"),
+        (
+            _CLOCK_PLUGIN.replace("acme/domain-clock", "architecture/domain-clock"),
+            "reserved rule namespace: architecture/domain-clock",
+        ),
     ],
 )
 def test_invalid_project_rule_is_a_config_error(

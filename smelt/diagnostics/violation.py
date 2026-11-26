@@ -132,7 +132,7 @@ class Violation:
         return data
 
 
-def docs_url(code: str) -> str:
-    if "/" in code:
+def docs_url(code: str, category: Category) -> str:
+    if category is Category.PROJECT:
         return f"{DOCS_BASE_URL.removesuffix('/rules')}/project-rules.md"
     return f"{DOCS_BASE_URL}/{code}.md"

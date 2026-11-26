@@ -85,24 +85,16 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     if settings is not None and status is not None:
         lines.append(f"Status:    {_status_text(status)} in {settings.source}")
     lines.append(f"Guide:     {doc.canonical}")
-    lines.extend(
-        [
-            "",
-            "Why:",
-            _indent(doc.rationale),
-            "",
-            "Bad:",
-            _indent(doc.bad),
-            "",
-            "Good:",
-            _indent(doc.good),
-            "",
-            "How to fix:",
-            _indent(doc.fix),
-            "",
-            f"Docs: {meta.docs_url}",
-        ]
+    sections = (
+        ("Why", doc.rationale),
+        ("Bad", doc.bad),
+        ("Good", doc.good),
+        ("How to fix", doc.fix),
     )
+    for title, text in sections:
+        if text:
+            lines.extend(["", f"{title}:", _indent(text)])
+    lines.extend(["", f"Docs: {meta.docs_url}"])
     console.print("\n".join(lines))
     return EXIT_OK
 

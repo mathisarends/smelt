@@ -1,28 +1,38 @@
-"""Declarations supported by local rule modules, read from the policy snapshot."""
+"""Rules a project defines in local Python modules, run from the policy snapshot."""
 
 from __future__ import annotations
 
-import ast
 import re
+import sys
+from contextlib import redirect_stdout
 from dataclasses import dataclass
-from pathlib import PureWindowsPath
+from importlib.abc import SourceLoader
+from importlib.machinery import ModuleSpec
+from importlib.util import module_from_spec
+from pathlib import Path, PureWindowsPath
 from typing import TYPE_CHECKING
 
-from smelt.config import calls
+from smelt.config.calls import CallMatcher
 from smelt.config.errors import ConfigError, ConfigIssue
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from smelt.config.source import SourceStore
+
+_NAME = re.compile(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*/[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Rule:
     name: str
-    match: calls.CallMatcher
+    match: CallMatcher
     message: str
     guide: str
+
+    def __post_init__(self) -> None:
+        _require_name(self.name)
+        _require_matcher(self.name, self.match)
+        _require_text(self.name, "message", self.message)
+        _require_text(self.name, "guide", self.guide)
 
 
 def load_project_rules(
@@ -39,123 +49,88 @@ def load_project_rules(
                 or not path.is_relative_to(root)
             ):
                 raise ValueError("expected a project-relative .py file")
-            exported = _declarations(store.read_text(path))
-            for rule in exported:
+            if not store.is_file(path):
+                raise ValueError("file not found")
+            for rule in _exported(path, store):
                 if rule.name in origins:
                     raise ValueError(
                         f"duplicate rule {rule.name!r}, first declared in {origins[rule.name]}"
                     )
                 origins[rule.name] = relative
                 rules.append(rule)
-        except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
+        except (OSError, ValueError) as exc:
             raise ConfigError(
                 [ConfigIssue("plugins", f"{relative}: {exc}")], str(owner)
             ) from exc
     return tuple(rules)
 
 
-def _declarations(source: str) -> list[Rule]:
-    declared: dict[str, Rule] = {}
-    imported: set[str] = set()
-    exported: list[Rule] | None = None
-    for node in ast.parse(source).body:
-        match node:
-            case ast.Expr(value=ast.Constant(value=str())):
-                continue
-            case ast.ImportFrom(module="smelt.rules", level=0, names=names):
-                for alias in names:
-                    if alias.name not in {"Rule", "calls"} or alias.asname:
-                        raise ValueError(
-                            f"line {node.lineno}: import Rule and calls by name"
-                        )
-                    imported.add(alias.name)
-            case ast.Assign(targets=[ast.Name(id="rules")], value=ast.List(elts=items)):
-                if exported is not None:
-                    raise ValueError(f"line {node.lineno}: duplicate rules export")
-                exported = [_export(item, declared) for item in items]
-            case ast.Assign(
-                targets=[ast.Name(id=name)],
-                value=ast.Call(func=ast.Name(id="Rule")) as call,
-            ):
-                if (
-                    imported != {"Rule", "calls"}
-                    or name in declared
-                    or name in {"Rule", "calls", "rules"}
-                ):
-                    raise ValueError(
-                        f"line {node.lineno}: expected a fresh rule name after importing Rule and calls"
-                    )
-                declared[name] = _rule(call)
-            case _:
-                raise ValueError(
-                    f"line {node.lineno}: expected a rule declaration or rules export"
-                )
-    if exported is None:
-        raise ValueError("missing rules export list")
-    return exported
-
-
-def _export(item: ast.expr, declared: dict[str, Rule]) -> Rule:
-    if isinstance(item, ast.Name) and item.id in declared:
-        return declared[item.id]
-    raise ValueError(f"line {item.lineno}: expected a previously declared rule")
-
-
-def _rule(call: ast.Call) -> Rule:
-    fields = {kw.arg: kw.value for kw in call.keywords}
-    if (
-        call.args
-        or len(fields) != len(call.keywords)
-        or fields.keys() != {"name", "match", "message", "guide"}
-    ):
+def _require_name(name: object) -> None:
+    if not (isinstance(name, str) and _NAME.fullmatch(name)):
         raise ValueError(
-            f"line {call.lineno}: Rule expects name, match, message and guide keywords"
+            f"expected a qualified rule name such as 'acme/domain-clock', got {name!r}"
         )
-    name = _text(fields["name"])
-    if not re.fullmatch(
-        r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*/[a-z][a-z0-9]*(?:-[a-z0-9]+)*", name
+
+
+def _require_matcher(name: str, match: object) -> None:
+    if not isinstance(match, CallMatcher):
+        raise TypeError(f"{name}: expected match=calls.to(...), got {match!r}")
+
+
+def _require_text(name: str, label: str, text: object) -> None:
+    if not (isinstance(text, str) and text.strip()):
+        raise ValueError(f"{name}: expected a non-empty {label}")
+
+
+class _SnapshotLoader(SourceLoader):
+    """Import one module from the policy snapshot; nothing is cached on disk."""
+
+    def __init__(self, path: Path, store: SourceStore) -> None:
+        self._path = path
+        self._store = store
+
+    def get_filename(self, fullname: str) -> str:
+        return str(self._path)
+
+    def get_data(self, path: str) -> bytes:
+        return self._store.read_bytes(Path(path))
+
+
+def _exported(path: Path, store: SourceStore) -> list[Rule]:
+    loader = _SnapshotLoader(path, store)
+    spec = ModuleSpec(f"smelt_project_rules_{path.stem}", loader, origin=str(path))
+    spec.has_location = True
+    module = module_from_spec(spec)
+    try:
+        # A report on stdout stays parseable when a rule module prints.
+        with redirect_stdout(sys.stderr):
+            loader.exec_module(module)
+    except Exception as exc:  # Project code can fail in any way; report it as policy.
+        raise ValueError(_failure(exc, path)) from exc
+    exported = getattr(module, "rules", None)
+    if not isinstance(exported, list | tuple) or not all(
+        isinstance(rule, Rule) for rule in exported
     ):
-        raise ValueError(
-            f"line {call.lineno}: expected a qualified rule name such as acme/domain-clock"
-        )
-    return Rule(
-        name=name,
-        match=_matcher(fields["match"]),
-        message=_text(fields["message"]),
-        guide=_text(fields["guide"]),
+        raise ValueError("expected a module-level `rules` list of Rule objects")
+    return list(exported)
+
+
+def _failure(exc: Exception, path: Path) -> str:
+    line = _line(exc, path)
+    place = f"line {line}: " if line is not None else ""
+    return f"{place}{type(exc).__name__}: {exc}"
+
+
+def _line(exc: Exception, path: Path) -> int | None:
+    """The innermost line of the rule module itself on the way to the failure."""
+    line = (
+        exc.lineno
+        if isinstance(exc, SyntaxError) and exc.filename == str(path)
+        else None
     )
-
-
-def _matcher(node: ast.expr) -> calls.CallMatcher:
-    layer = None
-    match node:
-        case ast.Call(
-            func=ast.Attribute(value=base, attr="in_layer"),
-            args=[argument],
-            keywords=[],
-        ):
-            node = base
-            layer = _text(argument)
-    match node:
-        case ast.Call(
-            func=ast.Attribute(value=ast.Name(id="calls"), attr="to"),
-            args=[argument],
-            keywords=[],
-        ):
-            target = _text(argument)
-            if "." in target and all(part.isidentifier() for part in target.split(".")):
-                match = calls.to(target)
-                return match.in_layer(layer) if layer is not None else match
-    raise ValueError(
-        f"line {node.lineno}: expected calls.to('module.name') with optional .in_layer('layer')"
-    )
-
-
-def _text(node: ast.expr) -> str:
-    if (
-        isinstance(node, ast.Constant)
-        and isinstance(node.value, str)
-        and node.value.strip()
-    ):
-        return node.value
-    raise ValueError(f"line {node.lineno}: expected a non-empty string literal")
+    traceback = exc.__traceback__
+    while traceback is not None:
+        if traceback.tb_frame.f_code.co_filename == str(path):
+            line = traceback.tb_lineno
+        traceback = traceback.tb_next
+    return line

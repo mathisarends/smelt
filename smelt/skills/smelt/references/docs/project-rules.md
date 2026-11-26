@@ -20,8 +20,8 @@ domain_clock = Rule(
 rules = [domain_clock]
 ```
 
-Import `Rule` and `calls` by name from `smelt.rules`. The module exports its rules
-as a list named `rules`. The qualified name identifies a rule across files and
+Import `Rule` and `calls` from `smelt.rules`. Smelt runs the module and reads
+the list named `rules`. The qualified name identifies a rule across files and
 commands, so renaming the Python variable preserves suppressions and debt.
 The finding points to the offending call and shows `message`.
 `smelt context TARGET --guide` shows `guide` when the rule is active and the
@@ -43,14 +43,15 @@ Smelt resolves the path relative to the configuration file, registers the
 exports and then validates the rule selection. Loading a file makes its rules
 available for `smelt rules` and `smelt explain`. The usual selection and
 severity settings determine which findings appear in a check. An unknown
-rule, missing plugin file, invalid export or duplicate identity is a
-configuration error. Use a namespace distinct from built-in families.
+rule, missing plugin file, failing module, invalid export or duplicate identity
+is a configuration error that names the file and, where known, the line. Use a
+namespace distinct from built-in families.
 
 ## Execute the matcher in Rust
 
 The example describes two operations: resolve calls to a qualified name, and
-restrict them to modules assigned to a layer. The loader produces a validated
-matcher description once per policy snapshot. The native checker uses its
+restrict them to modules assigned to a layer. Running the module produces a
+validated matcher description once per policy snapshot. The native checker uses its
 module classification, syntax and binding information to evaluate active
 matchers together. Rules targeting the same call can share candidate lookup.
 Each emitted finding enters the normal severity, suppression, debt and
@@ -68,19 +69,41 @@ warning and `--fail-on warning`:
 | domain | `invoice.now()` on an unknown receiver | Clean, exit 0 |
 | domain | `DT.now()` where a parameter named `DT` shadows the import | Clean, exit 0 |
 
-For staged checks, Smelt reads the configuration, plugin declarations and
+For staged checks, Smelt reads the configuration, listed rule modules and
 analyzed Python files from the Git index. Changed checks compare both source
 snapshots using the same current rule definitions. The qualified rule name is
 also its report code. Use it in inline suppressions, debt and CLI selectors.
 
-## Supported declarations
+## Write the module as ordinary Python
 
-Use literal strings, one assignment per rule and a final `rules = [...]`
-export list. The loader reads these declarations as Python syntax. It never
-imports the project module or runs callbacks. Helpers, import aliases, relative
-call targets and dynamic expressions are outside this declaration format.
-Plugin paths must resolve inside the project. A root policy can inherit its
-plugin list from a local `extends` base.
+Smelt runs each listed module and reads its `rules` list, so helpers, constants
+and loops can build the rules:
+
+```python
+from smelt.rules import Rule, calls
+
+CLOCKS = {"clock": "datetime.datetime.now", "timer": "time.time"}
+
+rules = [
+    Rule(
+        name=f"acme/domain-{name}",
+        match=calls.to(target).in_layer("domain"),
+        message=f"The domain layer reads the system {name} directly.",
+        guide="Read the current time through acme.clock.",
+    )
+    for name, target in CLOCKS.items()
+]
+```
+
+Every command that loads the policy runs the listed modules, including `check`,
+`rules`, `explain` and `context`. List only files you trust like the project's
+own code, and keep them free of side effects. Smelt runs no other project code.
+Text a module prints goes to stderr, so reports on stdout stay parseable.
+
+The module's own imports resolve in the environment that runs Smelt. A staged
+check reads the listed module from the Git index, but modules it imports come
+from the working tree. Plugin paths must name `.py` files inside the project.
+A root policy can inherit its plugin list from a local `extends` base.
 
 `calls.to("package.function")` checks production modules; adding
 `.in_layer("domain")` restricts it to that architecture layer. The checker

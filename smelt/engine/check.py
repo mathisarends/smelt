@@ -101,7 +101,7 @@ def rule_meta(rule: RuleContract) -> RuleMeta:
         default_severity=rule.default_severity,
         enabled_by_default=default,
         summary=rule.explain().summary,
-        docs_url=docs_url(rule.code),
+        docs_url=docs_url(rule.code, rule.category),
         requires=tuple(sorted(index.value for index in rule.requires)),
         config=rule.explain().config,
         activation={

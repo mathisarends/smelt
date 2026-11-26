@@ -61,8 +61,9 @@ discriminated unions. Module presence and legal imports do not establish those
 properties. Mirrored test paths do not establish useful behavioral assertions.
 
 Teams can now declare [project rules](project-rules.md) for statically resolved
-calls and optionally scope them to a layer. Other semantic conventions still
-need a focused companion check or a new matcher.
+calls and optionally scope them to a layer. Smelt runs the rule modules a policy
+lists under `plugins` and discovers no other project code. Other semantic
+conventions still need a focused companion check or a new matcher.
 
 Reuse existing tools for formatting, unused code, complexity, typing, dependency
 hygiene and behavior. Smelt's value is architectural policy, evidence and useful

@@ -5002,7 +5002,7 @@
         "project": {
           "$ref": "#/$defs/BroadRuleSetting",
           "title": "project: every rule in the project family",
-          "description": "project: every rule in the project family. Members: . Disable or cap active rules; individual entries take precedence.",
+          "description": "project: every rule in the project family. Disable or cap active rules; individual entries take precedence.",
           "examples": [
             "off"
           ]
@@ -7427,7 +7427,7 @@
       "type": "integer"
     },
     "plugins": {
-      "description": "Local Python rule declaration files, relative to the declaring policy.",
+      "description": "Local Python rule modules that Smelt runs, relative to the declaring policy.",
       "items": {
         "type": "string"
       },
