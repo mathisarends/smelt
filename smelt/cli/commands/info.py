@@ -29,7 +29,8 @@ if TYPE_CHECKING:
 
 
 def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
-    rules = build_rule_set()
+    settings = _project_settings(args, cwd, required=False)
+    rules = settings.rules if settings else build_rule_set()
     if (family := rules.family_codes(args.rule)) is not None:
         members = [
             rule_meta(rule).to_json() for rule in rules.rules if rule.code in family
@@ -55,7 +56,6 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     doc = rule.explain()
     meta = rule_meta(rule)
     usage = rule_usage(rule)
-    settings = _project_settings(args, cwd, rules, required=False)
     status = settings.status(rule) if settings else None
     if args.format == "json":
         data = {
@@ -85,31 +85,23 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     if settings is not None and status is not None:
         lines.append(f"Status:    {_status_text(status)} in {settings.source}")
     lines.append(f"Guide:     {doc.canonical}")
-    lines.extend(
-        [
-            "",
-            "Why:",
-            _indent(doc.rationale),
-            "",
-            "Bad:",
-            _indent(doc.bad),
-            "",
-            "Good:",
-            _indent(doc.good),
-            "",
-            "How to fix:",
-            _indent(doc.fix),
-            "",
-            f"Docs: {meta.docs_url}",
-        ]
+    sections = (
+        ("Why", doc.rationale),
+        ("Bad", doc.bad),
+        ("Good", doc.good),
+        ("How to fix", doc.fix),
     )
+    for title, text in sections:
+        if text:
+            lines.extend(["", f"{title}:", _indent(text)])
+    lines.extend(["", f"Docs: {meta.docs_url}"])
     console.print("\n".join(lines))
     return EXIT_OK
 
 
 def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
-    rule_set = build_rule_set()
-    settings = _project_settings(args, cwd, rule_set, required=args.unconfigured)
+    settings = _project_settings(args, cwd, required=args.unconfigured)
+    rule_set = settings.rules if settings else build_rule_set()
     codes = (
         settings.unconfigured_codes()
         if settings is not None and args.unconfigured
@@ -156,7 +148,7 @@ def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
 def config_show(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
     try:
-        settings = RuleSettings(build_rule_set(lazy=True), loaded)
+        settings = RuleSettings(build_rule_set(loaded, lazy=True), loaded)
         if loaded.config.members or args.sources:
             settings.validate_packages(
                 AnalysisContext(loaded.root, loaded.config, store=loaded.source)
@@ -219,16 +211,20 @@ _STATUS_LEGEND = (
 
 
 def _project_settings(
-    args: argparse.Namespace, cwd: Path, rules: RuleSet, *, required: bool
+    args: argparse.Namespace, cwd: Path, *, required: bool
 ) -> RuleSettings | None:
     """Rule settings of the project config, or None outside a configured project."""
     config = getattr(args, "config", None)
     if not required and config is None and discover_config(cwd) is None:
         return None
     try:
-        return RuleSettings(rules, load_project_config(config, cwd))
-    except (ConfigError, CliError):
-        if required:
+        loaded = load_project_config(config, cwd)
+        return RuleSettings(build_rule_set(loaded), loaded)
+    except (ConfigError, CliError) as exc:
+        if required or (
+            isinstance(exc, ConfigError)
+            and any(issue.path == "plugins" for issue in exc.issues)
+        ):
             raise
         return None
 

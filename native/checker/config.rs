@@ -27,6 +27,7 @@ pub struct Request {
     /// The file that declared each explicitly set key, for composed configs.
     pub origins: BTreeMap<String, String>,
     pub select: Vec<String>,
+    pub project_rules: Vec<super::rules::project::Declaration>,
     pub strict_coverage: bool,
     /// `suppressions.require_reason`: an inline suppression needs a `-- reason`.
     pub require_reason: bool,
@@ -125,6 +126,7 @@ impl Request {
         Ok(Self {
             root,
             config_path: loaded.path.clone(),
+            project_rules: Vec::new(),
             origins: loaded.origins.clone(),
             rule_sources: loaded.rule_sources.clone(),
             max_uncovered_facade_callers,

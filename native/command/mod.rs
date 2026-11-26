@@ -413,6 +413,12 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
             loaded.member = owner;
         }
     }
+    if loaded.config["plugins"]
+        .as_array()
+        .is_some_and(|paths| !paths.is_empty())
+    {
+        return Err("project rule declarations require the Python policy loader");
+    }
     let catalog = Catalog::load(CATALOG).ok_or("an unreadable rule catalog")?;
     let root = loaded.path.parent().ok_or("no project root")?.to_path_buf();
     let scope =

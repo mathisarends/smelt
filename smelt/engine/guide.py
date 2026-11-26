@@ -82,7 +82,7 @@ def build_guide(ctx: AnalysisContext, target: Target, loaded: LoadedConfig) -> G
     """Collect the instruction of every rule active for ``target`` and its tests."""
     ctx, _ = governing_view(ctx, target)
     info = target_info(ctx.model, target)
-    rules = build_rule_set()
+    rules = build_rule_set(loaded)
     settings = RuleSettings(rules, loaded)
     test_path = target.path if target.kind == "test" else _mirrored_test(ctx, target)
     entries: list[GuideEntry] = []

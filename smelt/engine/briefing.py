@@ -305,7 +305,9 @@ def build_briefing(
         }
         if model.has_features
         else None,
-        policy_hash=policy_hash(ctx.config),
+        policy_hash=policy_hash(
+            ctx.config, project_rules=loaded.project_rules if loaded else ()
+        ),
         analysis_error=analysis_error,
         violations={
             "errors": sum(v.severity is Severity.ERROR for v in scoped),
@@ -512,7 +514,7 @@ def _rule_brief(
     path: str | None,
     style: dict[str, dict[str, Any]],
 ) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
-    rules = build_rule_set()
+    rules = build_rule_set(loaded)
     policy = RuleSettings(rules, loaded)
     severities: dict[str, str] = {}
     details: dict[str, dict[str, Any]] = {}

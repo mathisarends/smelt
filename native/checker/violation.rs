@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
 use std::fmt::Write;
 
-const DOCS_BASE_URL: &str = "https://github.com/mathisarends/smelt/blob/main/docs/rules";
+const DOCS_BASE_URL: &str = "https://github.com/mathisarends/smelt/blob/main/docs";
 
 #[derive(Clone)]
 pub struct ImportLink {
@@ -76,7 +76,7 @@ impl Violation {
             "expected": self.expected,
             "hint": self.hint,
             "fix": self.fix,
-            "docs_url": format!("{DOCS_BASE_URL}/{}.md", self.code),
+            "docs_url": if self.category == "project" { format!("{DOCS_BASE_URL}/project-rules.md") } else { format!("{DOCS_BASE_URL}/rules/{}.md", self.code) },
         });
         if !self.import_chain.is_empty() {
             let chain: Vec<Value> = self

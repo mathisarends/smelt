@@ -78,6 +78,8 @@ pub struct Options {
     /// Rule codes the run is narrowed to; empty runs the configured rules.
     #[serde(default)]
     select: Vec<String>,
+    #[serde(default)]
+    project_rules: Vec<rules::project::Declaration>,
     /// Rule codes the run leaves out.
     #[serde(default)]
     ignore: Vec<String>,
@@ -393,6 +395,7 @@ fn run(options: Options) -> Result<Outcome, Failure> {
     let load = || {
         let _span = profile::span("load configuration");
         let mut request = Request::load(&config, options.select.clone())?;
+        request.project_rules.clone_from(&options.project_rules);
         if options.strict_coverage {
             request.force_strict_coverage()?;
         }
@@ -531,8 +534,9 @@ fn check_in_pool(
     configuration_findings: bool,
     with_rules: bool,
 ) -> Result<Outcome, Failure> {
-    let catalog: Vec<CatalogRule> =
+    let mut catalog: Vec<CatalogRule> =
         serde_json::from_str(CATALOG).map_err(|error| error.to_string())?;
+    catalog.extend(request.project_rules.iter().map(CatalogRule::from));
     let files = profile::time("discover files", || FileIndex::discover(request))?;
     let contracts = profile::time("resolve contracts", || Contracts::resolve(request, &files))?;
     let settings = Settings::new(&catalog, request);
@@ -604,6 +608,9 @@ fn check_in_pool(
     let (structure_rules, file_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = other_rules
         .into_iter()
         .partition(|rule| STRUCTURE_RULES.contains(&rule.code.as_str()));
+    let (project_rules, file_rules): (Vec<_>, Vec<_>) = file_rules
+        .into_iter()
+        .partition(|rule| rule.category == "project");
     let analysis = Analysis {
         active: &file_rules,
         project: rules::Project {
@@ -724,6 +731,13 @@ fn check_in_pool(
             ArchitectureModel::combine(&request.architecture, roots, &files, root_packages, parts)
         };
         drop(model_span);
+        if !project_rules.is_empty() {
+            outcomes.par_extend(source_pairs.par_iter().map(|(source, parsed)| {
+                let info = model.info(&source.module);
+                let layer = info.as_ref().and_then(|info| info.layer.as_deref());
+                rules::project::check(&project_rules, source, parsed, layer, &analysis)
+            }));
+        }
         // The features each architecture found, by workspace member; "" is the root.
         let features: Vec<(String, Vec<String>)> = if model.parts().is_empty() {
             vec![(

@@ -132,7 +132,7 @@ class Rule:
             expected=expected,
             hint=hint,
             edge=edge,
-            docs_url=docs_url(self.code),
+            docs_url=docs_url(self.code, self.category),
             category=self.category,
             fix=fix,
         )
