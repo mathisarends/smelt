@@ -65,6 +65,9 @@ between a small, versioned interface for explicitly installed rule packs and a
 documented companion-tool workflow. Do not hardcode one project's conventions
 into built-in rules or execute arbitrary discovered project plugins.
 
+The [project rule API proposal](proposals/project-rules.md) traces one local
+rule from its Python declaration through configuration and native matching.
+
 Reuse existing tools for formatting, unused code, complexity, typing, dependency
 hygiene and behavior. Smelt's value is architectural policy, evidence and useful
 agent guidance, rather than duplicating a language linter or test runner.
