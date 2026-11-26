@@ -359,6 +359,7 @@ static PROJECT: LazyLock<ModelDef> = LazyLock::new(|| {
             ),
             with_default("exclude", list(Ty::StrOr(&SOURCE_EXCLUSION)), json!([])),
             optional("workspace", Ty::Lit(&["uv"])),
+            optional("workspace_layout", Ty::Lit(&["flat", "src"])),
             optional(
                 "python_version",
                 Ty::Pattern(r"^3\.[0-9]+$", &PYTHON_VERSION),

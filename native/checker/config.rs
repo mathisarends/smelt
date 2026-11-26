@@ -143,6 +143,9 @@ impl Request {
                     .as_str()
                     .map(str::to_owned),
                 uv_workspace: policy["project"]["workspace"] == "uv",
+                workspace_layout: policy["project"]["workspace_layout"]
+                    .as_str()
+                    .map(str::to_owned),
             },
             architecture: Architecture::from_config(&policy["architecture"])?,
             member_architectures: member_architectures(policy)?,
@@ -239,6 +242,7 @@ pub struct Project {
     pub python_version: Option<String>,
     /// `project.workspace: uv`: the root analyzes its declared uv workspace members.
     pub uv_workspace: bool,
+    pub workspace_layout: Option<String>,
 }
 
 /// One `project.exclude` entry.

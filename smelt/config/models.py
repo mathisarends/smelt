@@ -149,6 +149,10 @@ class ProjectConfig(_Model):
         default=None,
         description="uv: read members from tool.uv.workspace in pyproject.toml. source_roots and test_roots then apply inside every member, root packages are discovered per member, and a member's own smelt.yml refines this policy for its files.",
     )
+    workspace_layout: Literal["flat", "src"] | None = Field(
+        default=None,
+        description="Canonical uv workspace package layout (LAY013). Use flat for member/member or src for member/src/member.",
+    )
     python_version: str | None = Field(
         default=None,
         pattern=r"^3\.[0-9]+$",

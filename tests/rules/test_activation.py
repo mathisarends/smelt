@@ -80,6 +80,10 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"style": {"module_import_exemptions": []}}, {"IMP002"}),
         ({"style": {"file_naming": {"yaml_extension": "yaml"}}}, {"LAY007"}),
         ({"style": {"file_naming": {"compose_basename": "compose"}}}, {"LAY007"}),
+        (
+            {"project": {"workspace": "uv", "workspace_layout": "src"}},
+            {"ARC010", "LAY013"},
+        ),
         ({"rules": {"architecture/uncovered-source": "error"}}, {"ARC013"}),
         ({"tests": {"layout": "mirror"}}, {"TST001"}),
         ({"rules": {"tests/private-access": "error"}}, {"TST002"}),

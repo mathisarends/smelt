@@ -130,6 +130,34 @@ def test_native_check_agrees_with_python_on_skip_reason_patterns(
     assert fell_back == (exit_code == 2)
 
 
+def test_native_check_writes_workspace_layout_findings(tmp_path: Path) -> None:
+    if not NATIVE.is_file():
+        pytest.skip("install the native client")
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": (
+                "version: 2\n"
+                "project: {workspace: uv, workspace_layout: src}\n"
+                "rules:\n"
+                "  architecture/undeclared-member-dependency: error\n"
+                "  layout/workspace-layout-convention: error\n"
+            ),
+            "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*"]\n',
+            "services/backend/pyproject.toml": '[project]\nname = "backend"\n',
+            "services/backend/backend/__init__.py": "",
+        },
+    )
+
+    args = ("--format", "json")
+    code, report, fell_back = _check(tmp_path, args, native=True)
+
+    assert code == 1
+    assert b"LAY013" in report
+    assert (code, report) == _check(tmp_path, args, native=False)[:2]
+    assert not fell_back
+
+
 @pytest.mark.parametrize("variant", COMPARISONS)
 def test_native_changed_check_writes_the_python_report(
     tmp_path: Path, variant: str

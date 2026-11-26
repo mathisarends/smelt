@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Opt in to [LAY013](docs/rules/LAY013.md) to enforce one uv workspace package
+  layout. Set `project.workspace_layout` to `flat` for `member/member` or `src`
+  for `member/src/member`, and enable `layout/workspace-layout-convention`.
+
 ## [0.18.0] - 2026-11-25
 
 See [upgrading from 0.17.0](docs/upgrading.md#0170-to-0180) for hook pins and

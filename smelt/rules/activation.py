@@ -62,6 +62,13 @@ POLICIES = {
             or config.structure.file_naming.compose_basename is not None
         ),
     ),
+    "LAY013": PolicyActivation(
+        "project.workspace is uv and project.workspace_layout selects flat or src.",
+        lambda config: (
+            config.project.workspace == "uv"
+            and config.project.workspace_layout is not None
+        ),
+    ),
     "ARC001": PolicyActivation(
         "architecture.layers defines layer dependencies.",
         lambda config: bool(config.architecture.layers),

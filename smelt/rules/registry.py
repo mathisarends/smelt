@@ -59,6 +59,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.settings:SecretSettingsField",
     "smelt.rules.structure.exports:PackageOnlyDunderAll",
     "smelt.rules.structure.file_naming:FileNameConvention",
+    "smelt.rules.structure.workspace_layout:WorkspaceLayoutConvention",
     "smelt.rules.structure.callables:PreferCallableInstance",
     "smelt.rules.structure.constants:PrivateClassConstant",
     "smelt.rules.structure.attributes:InternalPublicAttribute",

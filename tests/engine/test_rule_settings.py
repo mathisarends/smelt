@@ -43,6 +43,7 @@ def test_repository_policy_reviews_every_opt_in_rule(
         "ARC009",  # Member boundaries require a multi-member workspace.
         "ARC010",  # The single Python distribution has no member dependencies.
         "LAY002",  # Module introductions are useful selectively.
+        "LAY013",  # Smelt is packaged as a single distribution.
     }
 
 
