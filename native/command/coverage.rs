@@ -234,6 +234,9 @@ fn layer_name(name: &str) -> bool {
 /// `policy_hash`: equal for two reports checked under the same resolved config.
 fn policy_hash(dumped: &Value, layers: &[Value]) -> String {
     let mut policy = dumped.clone();
+    if let Some(entries) = policy.as_object_mut() {
+        entries.shift_remove("plugins"); // Plugin checks use the Python policy loader.
+    }
     if let Some(entries) = policy.as_object_mut()
         && !entries.get("members").is_some_and(truthy)
     {

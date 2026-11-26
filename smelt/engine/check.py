@@ -101,7 +101,7 @@ def rule_meta(rule: RuleContract) -> RuleMeta:
         default_severity=rule.default_severity,
         enabled_by_default=default,
         summary=rule.explain().summary,
-        docs_url=docs_url(rule.code),
+        docs_url=docs_url(rule.code, rule.category),
         requires=tuple(sorted(index.value for index in rule.requires)),
         config=rule.explain().config,
         activation={
@@ -169,9 +169,8 @@ def _run_check(
     if options.strict_coverage and not config.strict_coverage:
         config = config.with_strict_coverage()
         loaded = replace(loaded, config=config)
-    # The native core analyzes the working tree or the staged index with the
-    # built-in rules.
-    rules = build_rule_set(lazy=True)
+    # Resolve built-in and project rule selectors against the same snapshot.
+    rules = build_rule_set(loaded, lazy=True)
     active = _resolve_active_rules(rules, loaded, options)
     ctx = _analysis_context(loaded, context)
     compared = _comparison(ctx, options) if options.changed else None
@@ -402,9 +401,7 @@ def _resolve_active_rules(
             _validate_strict_coverage(loaded, options, setting)
             active.append((rule, Severity.ERROR))
             continue
-        explicitly_selected = bool(options.select) and _matches_prefix(
-            rule.code, options.select
-        )
+        explicitly_selected = rule.code in options.select
         package_enabled = policy.has_package_activation(rule.code)
         if setting == "off" and not package_enabled:
             continue
@@ -414,9 +411,9 @@ def _resolve_active_rules(
             severity = rule.default_severity
         else:
             continue
-        if options.select and not _matches_prefix(rule.code, options.select):
+        if options.select and not explicitly_selected:
             continue
-        if options.ignore and _matches_prefix(rule.code, options.ignore):
+        if rule.code in options.ignore:
             continue
         active.append((rule, severity))
     return active
@@ -435,20 +432,12 @@ def _validate_strict_coverage(
             ],
             loaded.path.name,
         )
-    if _matches_prefix(_COVERAGE, options.ignore):
+    if _COVERAGE in options.ignore:
         raise InvalidOptionError(
             "--ignore cannot disable strict coverage; use reasoned project.exclude entries instead",
             option="--ignore",
             value=",".join(options.ignore),
         )
-
-
-def _matches_prefix(code: str, prefixes: tuple[str, ...]) -> bool:
-    return any(
-        prefix.strip().upper() == "ALL" or code.startswith(prefix.strip().upper())
-        for prefix in prefixes
-        if prefix
-    )
 
 
 def _prefix_suggestion(raw: str, known: set[str]) -> str:

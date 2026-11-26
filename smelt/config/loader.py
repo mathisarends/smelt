@@ -5,6 +5,7 @@ import types
 import typing
 from collections.abc import Hashable
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
@@ -20,6 +21,7 @@ from smelt.config.errors import (
     format_loc,
 )
 from smelt.config.models import LIMIT_RULES, SmeltConfig
+from smelt.config.project_rules import Rule, load_project_rules
 from smelt.config.source import SourceStore
 from smelt.config.validation import partial_layer_issues, validate_semantics
 from smelt.config.workspace import (
@@ -30,7 +32,6 @@ from smelt.config.workspace import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, Sequence
-    from pathlib import Path
 
 CONFIG_FILENAME = "smelt.yml"
 CONFIG_FILENAMES = (CONFIG_FILENAME, "smelt.yaml")
@@ -101,6 +102,7 @@ class LoadedConfig:
     origins: dict[str, str] = field(default_factory=dict)
     member: str | None = None  # the workspace member whose config was selected
     rule_sources: tuple[str, ...] = ()
+    project_rules: tuple[Rule, ...] = ()
 
     @property
     def root(self) -> Path:
@@ -296,7 +298,11 @@ def _load_selected(
             ConfigIssue(issue.path, issue.message, composed.source_for(issue.path))
             for issue in warnings
         )
+    plugin_owner = Path(composed.source_for("plugins") or path)
     return LoadedConfig(
+        project_rules=load_project_rules(
+            config.plugins, plugin_owner, root=path.parent, store=view
+        ),
         config=config,
         path=path,
         warnings=(*warnings, *misplaced),

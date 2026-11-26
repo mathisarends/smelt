@@ -108,7 +108,7 @@ def _load_reporting_selectors(path: Path) -> LoadedConfig:
         return load_config(path)
     except ConfigError as exc:
         raw = raw_config(path)
-        if "version" not in raw:
+        if "version" not in raw or raw.get("plugins"):
             raise
         # Inspect rule selectors only while explaining invalid policy.
         from smelt.engine.rule_settings import unknown_selectors  # noqa: PLC0415

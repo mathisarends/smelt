@@ -8,7 +8,7 @@ index and a base revision, which it writes to a temporary directory.
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from pydantic import TypeAdapter
@@ -99,6 +99,7 @@ def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
     staged = loaded.source if isinstance(loaded.source, GitSourceStore) else None
     request = {
         "config": str(loaded.path),
+        "project_rules": [asdict(rule) for rule in loaded.project_rules],
         "select": list(run.select),
         "ignore": list(run.ignore),
         "strict_coverage": run.strict_coverage,
@@ -141,7 +142,12 @@ def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
     analysis = Analysis(
         _VIOLATIONS.validate_python(data["violations"]),
         data["suppressed"],
-        effective_coverage(loaded.config, facts, include_inventory=True),
+        effective_coverage(
+            loaded.config,
+            facts,
+            include_inventory=True,
+            project_rules=loaded.project_rules,
+        ),
         data["modules"],
         data["paths"],
     )

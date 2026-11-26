@@ -1411,6 +1411,7 @@ pub static SMELT: LazyLock<ModelDef> = LazyLock::new(|| {
         "SmeltConfig",
         vec![
             required("version", Ty::Version),
+            with_default("plugins", list(Ty::Str), json!([])),
             Field {
                 key: "project",
                 ty: Ty::Model(&PROJECT),

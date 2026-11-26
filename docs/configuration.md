@@ -9,6 +9,7 @@ discovery picks `smelt.yml`.
 | `version` | Required after composition | Optional | Optional | The effective root uses `version: 2`. |
 | `extends` | One local file | One local file | ? | Bases apply first. The path is relative to the file declaring it. |
 | `project` | Roots, package selection, workspace, coverage, exclusions | Optional defaults | `exclude` only | Root source/test roots apply inside each member. Member exclusions add to the root exclusions. |
+| `plugins` | Local rule files | Optional list | Inherited | The list replaces its base. Paths are relative to the declaring configuration. See [project rules](project-rules.md). |
 | `rules` | Shared rule settings | Optional layer | Member settings | Base, root, member, then closest applicable `style.overrides` entry. A member needs a reason to lower inherited severity. |
 | `style` | Shared source conventions | Optional defaults | Member conventions | A member inherits root values option by option. Changing an inherited value requires a reason. |
 | `style.overrides` | Root-owned packages | Optional entries | Member-owned packages | The closest matching package that sets an option wins. |

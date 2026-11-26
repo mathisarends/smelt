@@ -43,6 +43,12 @@ def config_json_schema() -> dict[str, Any]:
         if getattr(rule, "scope", "source") == "source":
             source_properties[rule.name] = definition
             source_codes[f"^{rule.code}$"] = definition
+    custom_name = (
+        r"^(?!(?:"
+        + "|".join(family.value for family in Category)
+        + r")/)[a-z][a-z0-9]*(?:-[a-z0-9]+)*/[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    )
+    codes[custom_name] = source_codes[custom_name] = {"$ref": "#/$defs/RuleSetting"}
     for family in Category:
         members = [rule for rule in rules if rule.category == family]
         source_members = [
@@ -99,11 +105,14 @@ def config_json_schema() -> dict[str, Any]:
 
 
 def _selection(title: str, members: Sequence[RuleContract]) -> dict[str, Any]:
+    # The project family has no built-in members; its rules come from plugins.
+    names = ", ".join(rule.name for rule in members)
+    listed = f" Members: {names}." if names else ""
     return {
         "$ref": "#/$defs/BroadRuleSetting",
         "title": title,
         "description": (
-            f"{title}. Members: {', '.join(rule.name for rule in members)}. "
+            f"{title}.{listed} "
             "Disable or cap active rules; individual entries take precedence."
         ),
         "examples": ["off"],

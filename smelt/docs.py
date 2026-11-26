@@ -70,6 +70,7 @@ _SKILL_GUIDES = (
     "docs/architecture.md",
     "docs/cli.md",
     "docs/configuration.md",
+    "docs/project-rules.md",
     "docs/integrations.md",
     "docs/rule-selection.md",
     "docs/structure.md",
