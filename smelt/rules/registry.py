@@ -98,6 +98,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.private_definitions:ExcessPrivateDefinitions",
     "smelt.rules.structure.exports:ReexportOnlyModule",
     "smelt.rules.structure.reexport_convention:ReexportConvention",
+    "smelt.rules.structure.deep_reexports:DeepPackageReexport",
     "smelt.rules.structure.headers:MisplacedModuleLogger",
     "smelt.rules.structure.comments:RedundantComment",
     "smelt.rules.testing.location:MisplacedTestFile",

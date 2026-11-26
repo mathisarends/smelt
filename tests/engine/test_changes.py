@@ -95,6 +95,31 @@ def test_changed_literal_group_detects_new_sites_after_a_group_is_accepted(
     assert not violations(tmp_path, options)
 
 
+def test_changed_deep_reexport_detects_a_new_name_in_an_existing_import(
+    tmp_path: Path,
+) -> None:
+    root = write_policy_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "from .api.impl import Item\n",
+            "app/api/__init__.py": "",
+            "app/api/impl.py": "class Item: pass\nclass Other: pass\n",
+        },
+    )
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "existing deep re-export")
+
+    options = CheckOptions(changed=True, select=("VIS011",))
+    write_policy_project(root, {"app/__init__.py": "from app.api.impl import Item\n"})
+    assert violations(root, options) == []
+    write_policy_project(
+        root, {"app/__init__.py": "from app.api.impl import Item, Other\n"}
+    )
+    assert codes_at(violations(root, options)) == [("VIS011", "app/__init__.py", 1)]
+
+
 def test_changed_module_fanout_detects_replaced_dependency_at_the_same_count(
     tmp_path: Path,
 ) -> None:

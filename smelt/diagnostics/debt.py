@@ -134,6 +134,7 @@ def _edge_field(violation: Violation) -> str | None:
         "CPX006": "comprehension_edges",
         "CPX007": "decision_edges",
         "VIS007": "definition_edges",
+        "VIS011": "reexport_edges",
         "TST005": "patch_edges",
     }.get(violation.code)
 
