@@ -53,7 +53,7 @@ use super::violation::Violation;
 use ruff_text_size::TextSize;
 use serde_json::Value;
 
-pub const PORTED: [&str; 97] = [
+pub const PORTED: [&str; 98] = [
     "ARC001", "ARC002", "ARC003", "ARC004", "ARC005", "ARC006", "ARC007", "ARC008", "ARC009",
     "ARC010", "ARC011", "ARC012", "ARC013", "ARC014", "CPX001", "CPX002", "CPX003", "CPX004",
     "CPX005", "CPX006", "CPX007", "CPX008", "FWK001", "FWK002", "IDM001", "IDM002", "IDM003",
@@ -64,7 +64,7 @@ pub const PORTED: [&str; 97] = [
     "MOD010", "MOD011", "MOD012", "TST001", "TST002", "TST003", "TST004", "TST005", "TST006",
     "TST007", "TST008", "TST009", "TST010", "TST011", "TST012", "TST013", "TYP001", "TYP002",
     "TYP003", "TYP004", "TYP005", "TYP006", "TYP007", "TYP008", "VIS001", "VIS002", "VIS003",
-    "VIS004", "VIS005", "VIS006", "VIS007", "VIS008", "VIS009", "VIS010",
+    "VIS004", "VIS005", "VIS006", "VIS007", "VIS008", "VIS009", "VIS010", "VIS011",
 ];
 
 /// Source rules that also read test modules, because their finding is not about test quality.

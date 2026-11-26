@@ -295,6 +295,7 @@ fn edge_field(code: &str) -> Option<&'static str> {
         "CPX006" => "comprehension_edges",
         "CPX007" => "decision_edges",
         "VIS007" => "definition_edges",
+        "VIS011" => "reexport_edges",
         "TST005" => "patch_edges",
         _ => return None,
     })

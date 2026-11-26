@@ -1,6 +1,7 @@
 //! Rules over the module inventory and its place in the architecture.
 mod class_names;
 mod coverage;
+mod deep_reexports;
 mod duplicate_functions;
 mod enum_values;
 mod file_naming;
@@ -36,10 +37,10 @@ use rayon::prelude::*;
 use serde_json::Value;
 use std::sync::OnceLock;
 
-pub const STRUCTURE_RULES: [&str; 26] = [
+pub const STRUCTURE_RULES: [&str; 27] = [
     "ARC011", "ARC012", "ARC013", "ARC014", "CPX001", "CPX004", "IMP003", "IMP004", "LAY001",
     "LAY003", "LAY005", "LAY007", "LAY009", "LAY013", "MOD001", "MOD002", "MOD009", "TST001",
-    "TST012", "TYP005", "VIS001", "VIS002", "VIS004", "VIS005", "VIS009", "VIS010",
+    "TST012", "TYP005", "VIS001", "VIS002", "VIS004", "VIS005", "VIS009", "VIS010", "VIS011",
 ];
 
 /// The structure rules that read discovered tests.
@@ -185,6 +186,7 @@ fn rule_findings<'r>(
             "VIS005" => private_access::check(context),
             "VIS009" => members::check_test_only_functions(context),
             "VIS010" => members::check_test_only_attributes(context),
+            "VIS011" => deep_reexports::check(context),
             _ => Vec::new(),
         };
         for finding in raised {

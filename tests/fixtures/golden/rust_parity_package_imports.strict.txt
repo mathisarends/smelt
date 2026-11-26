@@ -61,3 +61,4 @@ LAY004 app/client.py:40:None error imports appear after later definition groups
 VIS001 app/client.py:47:1 warning function is public, but has no observed use outside its module
 VIS005 app/__init__.py:4:21 warning production code accesses private module symbol app.models._hidden
 VIS008 app/sub/__init__.py:2:26 warning fix use a plain import for Third under the __all__ convention
+VIS011 app/__init__.py:6:1 warning this re-export bypasses the app.sub package API

@@ -196,6 +196,7 @@ rules:
 
   # Keep implementation details private and exports deliberate.
   # Review cohesion before splitting parsers, renderers or model modules.
+  visibility/deep-package-reexport: error
   visibility/excess-private-definitions: hint
   visibility/foreign-private-access: error
   visibility/internal-public-attribute: error
