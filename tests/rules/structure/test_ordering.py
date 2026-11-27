@@ -230,6 +230,52 @@ def test_builtin_import_aliases_and_method_return_unions_are_supported(
     assert finding.expected["order"] == ["api", "_helper"]
 
 
+@pytest.mark.parametrize(
+    ("header", "decorator"),
+    [
+        ("from abc import abstractmethod", "abstractmethod"),
+        ("import abc", "abc.abstractmethod"),
+        ("from functools import cached_property", "cached_property"),
+        ("from typing import override", "override"),
+        ("from typing_extensions import final", "final"),
+    ],
+)
+def test_marker_decorators_do_not_pin_private_methods(
+    tmp_path: Path, header: str, decorator: str
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": CONFIG,
+            "app/module.py": f"{header}\nclass Service:\n    @{decorator}\n    def _helper(self): pass\n    def api(self): pass\n",
+        },
+    )
+    [finding] = violations(tmp_path, OPTIONS)
+    assert finding.expected is not None
+    assert finding.expected["order"] == ["api", "_helper"]
+    assert finding.expected["fixable"]
+
+
+def test_unknown_and_shadowed_decorators_still_pin_methods(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": CONFIG,
+            "app/module.py": "from app.hooks import abstractmethod, validator\nclass Service:\n    @validator\n    def _check(self): pass\n    @abstractmethod\n    def _helper(self): pass\n    def api(self): pass\n",
+        },
+    )
+    outcome = check(tmp_path, OPTIONS)
+    assert outcome.report.violations == []
+    assert outcome.report.coverage is not None
+    reasons = [
+        barrier["reason"]
+        for item in outcome.report.coverage["ordering"]
+        for barrier in item["barriers"]
+        if barrier["scope"] != "module"
+    ]
+    assert reasons == ["unrecognized decorators execute at definition time"] * 2
+
+
 def test_public_first_retains_a_needed_future_import(tmp_path: Path) -> None:
     write_project(
         tmp_path,

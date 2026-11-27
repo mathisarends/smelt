@@ -40,7 +40,7 @@ CPX004 app/client.py:170:1 warning Function factory repeats factory in app/clien
 CPX004 app/client_copy.py:170:1 warning Function factory repeats factory in app/client.py
 IDM003 app/client_copy.py:171:5 hint review Local.go as __call__ with an operation-based class name
 IDM003 app/client_copy.py:178:1 hint review Shadowed.use as __call__ with an operation-based class name
-LAY004 app/client_copy.py:64:None error fix definitions in module.Controller#0 have 4 avoidable ordering inversion(s)
+LAY004 app/client_copy.py:52:None error fix definitions in module.Controller#0 have 7 avoidable ordering inversion(s)
 LAY005 app/client_copy.py:128:5 hint Controller.static is an internal static helper; prefer a private module function
 MOD009 app/client.py:178:1 warning Class Shadowed is also defined in app.client_copy:178
 MOD009 app/client.py:17:1 warning Class Controller is also defined in app.client_copy:17

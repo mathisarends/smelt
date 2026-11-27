@@ -39,7 +39,7 @@ IDM003 app/client.py:171:5 hint review Local.go as __call__ with an operation-ba
 IDM003 app/client.py:178:1 hint review Shadowed.use as __call__ with an operation-based class name
 IDM003 app/models.py:12:1 hint review Service.run as __call__ with an operation-based class name
 IDM004 app/models.py:95:1 hint Loop is a second name for class L10
-LAY004 app/client.py:64:None error fix definitions in module.Controller#0 have 4 avoidable ordering inversion(s)
+LAY004 app/client.py:52:None error fix definitions in module.Controller#0 have 7 avoidable ordering inversion(s)
 LAY005 app/client.py:128:5 hint Controller.static is an internal static helper; prefer a private module function
 MOD011 app/models.py:38:5 warning Frozen dataclass Other.values contains mutable dict contents
 TYP006 app/client.py:26:70 hint fix 1 quoted annotation(s); an annotations future import defers them
