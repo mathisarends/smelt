@@ -404,6 +404,23 @@
     "activation": null
   },
   {
+    "target": "smelt.rules.structure.parameter_groups:DuplicateParameterGroup",
+    "code": "CPX009",
+    "name": "complexity/duplicate-parameter-group",
+    "category": "complexity",
+    "default_severity": "hint",
+    "requires": [
+      "files",
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "architecture_scoped": false,
+    "scope": "source",
+    "fix_availability": "none",
+    "summary": "A group of parameter names travels together through several functions.",
+    "activation": null
+  },
+  {
     "target": "smelt.rules.structure.settings:SecretSettingsField",
     "code": "FWK001",
     "name": "frameworks/prefer-secret-type",

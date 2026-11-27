@@ -108,6 +108,7 @@ rules:
 
   # Keep decisions and collaborator calls readable.
   complexity/duplicate-function: warning
+  complexity/duplicate-parameter-group: hint
   complexity/excess-attribute-depth: warning
   complexity/excess-comprehension-loops: hint
   complexity/excess-constructor-decisions: hint
