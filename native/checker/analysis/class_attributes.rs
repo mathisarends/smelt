@@ -572,12 +572,17 @@ fn initializer_fields<'a>(method: &'a StmtFunctionDef, facts: &mut ClassFacts<'a
     let written = BindingCounts::of_statements(&method.body);
     for statement in &method.body {
         let (targets, annotation, value): (&[Expr], _, _) = match statement {
-            Stmt::Assign(node) => (&node.targets, None, Some(node.value.as_ref())),
-            Stmt::AnnAssign(node) => (
-                std::slice::from_ref(node.target.as_ref()),
-                Some(node.annotation.as_ref()),
-                node.value.as_deref(),
-            ),
+            Stmt::Assign(node) => (&node.targets, None, node.value.as_ref()),
+            Stmt::AnnAssign(node) => {
+                let Some(value) = node.value.as_deref() else {
+                    continue;
+                };
+                (
+                    std::slice::from_ref(node.target.as_ref()),
+                    Some(node.annotation.as_ref()),
+                    value,
+                )
+            }
             _ => continue,
         };
         for target in targets {
@@ -590,7 +595,7 @@ fn initializer_fields<'a>(method: &'a StmtFunctionDef, facts: &mut ClassFacts<'a
             let attribute = target.attr.as_str();
             facts.names.insert(attribute);
             let parameter = match value {
-                Some(Expr::Name(name)) if written.get(name.id.as_str()) == 0 => {
+                Expr::Name(name) if written.get(name.id.as_str()) == 0 => {
                     annotated.get(name.id.as_str()).copied()
                 }
                 _ => None,

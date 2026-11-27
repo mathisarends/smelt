@@ -81,6 +81,26 @@ def test_runs_helpers_and_loops_of_the_module(tmp_path: Path) -> None:
     ]
 
 
+def test_loads_a_module_using_a_dataclass_with_deferred_annotations(
+    tmp_path: Path,
+) -> None:
+    source = """from __future__ import annotations
+from dataclasses import dataclass
+
+@dataclass
+class Clock:
+    target: str
+
+definition = Clock("datetime.datetime.now")
+""" + _CLOCK.replace('"datetime.datetime.now"', "definition.target")
+    root = write_project(tmp_path, {"rules.py": source})
+    [rule] = _load(root, "rules.py")
+    assert (rule.name, rule.match.target) == (
+        "acme/domain-clock",
+        "datetime.datetime.now",
+    )
+
+
 def test_reads_the_module_from_the_source_store(tmp_path: Path) -> None:
     root = write_project(tmp_path, {"rules.py": "rules = []\n"})
 

@@ -1,5 +1,16 @@
 # Upgrading Smelt
 
+## 0.18.0 to 0.19.0
+
+1. Update your [hook and CI pins](integrations.md) to 0.19.0 and refresh the
+   bundled agent reference with `smelt skill install --force`.
+2. If you use [IDM002](rules/IDM002.md), review new findings for adjacent
+   `isinstance` guards that end in `return` or `raise`. The JSON field
+   `expected.form` distinguishes `guard` from `elif` findings.
+3. To add [project rules](project-rules.md), list trusted local Python modules
+   under `plugins` and enable their rules by name. Smelt runs these modules
+   when it loads the policy, including in commit hooks and CI.
+
 ## 0.17.0 to 0.18.0
 
 1. Update your [hook and CI pins](integrations.md) to 0.18.0 and refresh the

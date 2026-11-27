@@ -248,7 +248,8 @@ impl<'a, 'i> Scope<'a, 'i> {
             return;
         };
         let attribute = literal.value.to_str();
-        if attribute.starts_with("__") && attribute.ends_with("__") {
+        // Private names are mangled in declarations but not in string arguments.
+        if attribute.starts_with("__") {
             return;
         }
         let receiver = &arguments.args[0];
