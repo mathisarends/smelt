@@ -22,10 +22,17 @@ const TYPE_FACTORIES: [&str; 6] = [
     "typing_extensions.ParamSpec",
 ];
 const OVERLOAD: [&str; 2] = ["typing.overload", "typing_extensions.overload"];
-const WRAPPERS: [&str; 3] = [
+/// Decorators that only wrap or mark the function, independent of definition order.
+const WRAPPERS: [&str; 9] = [
     "builtins.property",
     "builtins.staticmethod",
     "builtins.classmethod",
+    "abc.abstractmethod",
+    "functools.cached_property",
+    "typing.final",
+    "typing.override",
+    "typing_extensions.final",
+    "typing_extensions.override",
 ];
 const INIT: [&str; 3] = ["__init__", "__new__", "__post_init__"];
 const PROPERTY_INSTANCE: &str = "builtins.property-instance";

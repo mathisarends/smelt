@@ -22,6 +22,60 @@ if TYPE_CHECKING:
     from smelt.rules.activation import PolicyActivation
     from smelt.rules.base import GuideTarget, RuleContract, RuleDoc
 
+
+def catalog_metadata() -> list[dict[str, Any]]:
+    return [
+        {
+            "target": f"{type(rule).__module__}:{type(rule).__name__}",
+            "code": rule.code,
+            "name": rule.name,
+            "category": rule.category.value,
+            "default_severity": rule.default_severity.value,
+            "requires": sorted(index.value for index in rule.requires),
+            **{
+                flag: getattr(rule, flag, False)
+                for flag in (
+                    "enabled_by_default",
+                    "architecture_scoped",
+                )
+            },
+            "scope": getattr(rule, "scope", "source"),
+            "fix_availability": getattr(
+                rule, "fix_availability", FixAvailability.NONE
+            ).value,
+            # The native check reports it without importing the rule.
+            "summary": rule.explain().summary,
+            # The native check keeps only the conditions, which are code.
+            "activation": _activation_metadata(POLICIES.get(rule.code)),
+        }
+        for rule in sorted(_builtin_rules(), key=lambda rule: rule.code)
+    ]
+
+
+def build_rule_set(
+    loaded: LoadedConfig | None = None, *, lazy: bool = False
+) -> RuleSet:
+    custom: list[RuleContract] = []
+    if loaded is not None:
+        for declaration in loaded.project_rules:
+            if declaration.name.split("/", 1)[0] in Category:
+                raise ConfigError(
+                    [
+                        ConfigIssue(
+                            "plugins", f"reserved rule namespace: {declaration.name}"
+                        )
+                    ],
+                    loaded.path.name,
+                )
+            custom.append(ProjectRule(declaration))
+    if lazy:
+        entries = json.loads(
+            Path(__file__).with_name("catalog.json").read_text(encoding="utf-8")
+        )
+        return RuleSet([*(_LazyRule(entry) for entry in entries), *custom])
+    return RuleSet(sorted([*_builtin_rules(), *custom], key=lambda rule: rule.code))
+
+
 _IMPLEMENTATIONS = (
     "smelt.rules.dependencies.layers:LayerBoundary",
     "smelt.rules.dependencies.features:CrossFeatureImport",
@@ -147,68 +201,15 @@ class _LazyRule:
         self.fix_availability = FixAvailability(metadata["fix_availability"])
         self._target = str(metadata["target"])
 
-    @cached_property
-    def _implementation(self) -> RuleContract:
-        return _load(self._target)
-
     def explain(self) -> RuleDoc:
         return self._implementation.explain()
 
     def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
         return self._implementation.guide(ctx, target)
 
-
-def catalog_metadata() -> list[dict[str, Any]]:
-    return [
-        {
-            "target": f"{type(rule).__module__}:{type(rule).__name__}",
-            "code": rule.code,
-            "name": rule.name,
-            "category": rule.category.value,
-            "default_severity": rule.default_severity.value,
-            "requires": sorted(index.value for index in rule.requires),
-            **{
-                flag: getattr(rule, flag, False)
-                for flag in (
-                    "enabled_by_default",
-                    "architecture_scoped",
-                )
-            },
-            "scope": getattr(rule, "scope", "source"),
-            "fix_availability": getattr(
-                rule, "fix_availability", FixAvailability.NONE
-            ).value,
-            # The native check reports it without importing the rule.
-            "summary": rule.explain().summary,
-            # The native check keeps only the conditions, which are code.
-            "activation": _activation_metadata(POLICIES.get(rule.code)),
-        }
-        for rule in sorted(_builtin_rules(), key=lambda rule: rule.code)
-    ]
-
-
-def build_rule_set(
-    loaded: LoadedConfig | None = None, *, lazy: bool = False
-) -> RuleSet:
-    custom: list[RuleContract] = []
-    if loaded is not None:
-        for declaration in loaded.project_rules:
-            if declaration.name.split("/", 1)[0] in Category:
-                raise ConfigError(
-                    [
-                        ConfigIssue(
-                            "plugins", f"reserved rule namespace: {declaration.name}"
-                        )
-                    ],
-                    loaded.path.name,
-                )
-            custom.append(ProjectRule(declaration))
-    if lazy:
-        entries = json.loads(
-            Path(__file__).with_name("catalog.json").read_text(encoding="utf-8")
-        )
-        return RuleSet([*(_LazyRule(entry) for entry in entries), *custom])
-    return RuleSet(sorted([*_builtin_rules(), *custom], key=lambda rule: rule.code))
+    @cached_property
+    def _implementation(self) -> RuleContract:
+        return _load(self._target)
 
 
 def _activation_metadata(

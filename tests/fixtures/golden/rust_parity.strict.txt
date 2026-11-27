@@ -844,6 +844,7 @@ LAY004 parity/class_constants.py:127:None error definitions in module.Reads#0 ha
 LAY004 parity/future_policy/needed/imported_late.py:5:None error imports appear after later definition groups
 LAY004 parity/generics/shadowed.py:3:None error fix definitions in module have 1 avoidable ordering inversion(s)
 LAY004 parity/interfaces.py:103:None error definitions in module.Shape#0 have 8 avoidable ordering inversion(s)
+LAY004 parity/interfaces.py:84:None error definitions in module.Port#0 have 3 avoidable ordering inversion(s)
 LAY004 parity/module_loggers/before_imports.py:3:None error imports appear after later definition groups
 LAY004 parity/module_loggers/docstring_only.py:4:None error imports appear after later definition groups
 LAY004 parity/module_loggers/no_imports.py:2:None error imports appear after later definition groups
@@ -893,6 +894,7 @@ LAY004 parity/reexports/imported_all.py:2:None error imports appear after later 
 LAY004 parity/reexports/imported_all.py:3:None error imports appear after later definition groups
 LAY004 parity/reexports/mismatch.py:2:None error imports appear after later definition groups
 LAY004 parity/reexports/non_string.py:2:None error imports appear after later definition groups
+LAY004 parity/signatures.py:91:None error fix definitions in module.Methods#0 have 10 avoidable ordering inversion(s)
 LAY004 parity/stateful.py:13:None error definitions in module.Assigns#0 have 10 avoidable ordering inversion(s)
 LAY004 parity/test_support/service.py:46:None error fix definitions in module have 1 avoidable ordering inversion(s)
 LAY004 parity/unit_durations.py:18:None error fix definitions in module have 1 avoidable ordering inversion(s)
