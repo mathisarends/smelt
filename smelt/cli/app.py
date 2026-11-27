@@ -140,6 +140,12 @@ def _add_check(sub: _Subparsers) -> None:
         help="list hints in text output (always on with --changed)",
     )
     check.add_argument(
+        "--verbose",
+        action="store_true",
+        help="print the evidence of every finding, hints included; with one "
+        "selected rule this replaces the rule view",
+    )
+    check.add_argument(
         "--statistics",
         action="store_true",
         help="show counts per rule instead of each finding",

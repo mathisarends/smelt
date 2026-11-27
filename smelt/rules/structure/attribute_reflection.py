@@ -59,4 +59,8 @@ class RedundantGetattr(Rule):
         ),
         canonical="Read attributes the declared type guarantees directly instead of through getattr or hasattr",
         config=("rules",),
+        smell="getattr or hasattr with a literal name reads an attribute that every declared type of the receiver always has.",
+        no_smell="An attribute that is meant to be optional: declare it optional on the class and keep the reflection.",
+        repair="Read the attribute directly and replace a hasattr check by the branch it guarded; then drop checks on the value that the declared type settles.",
+        subject="{call}({receiver}, '{attribute}')",
     )

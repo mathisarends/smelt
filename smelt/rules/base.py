@@ -33,6 +33,19 @@ class RuleDoc:
     ``smelt context --guide``. Rules with options render it from their policy."""
     config: tuple[str, ...] = ()
     example_language: str = "python"
+    smell: str = ""
+    """What makes a finding a real problem, in one sentence; the summary when empty."""
+    no_smell: str = ""
+    """When a finding is legitimately kept, and how to record that decision."""
+    repair: str = ""
+    """The repair in one sentence, shown once above the findings of a
+    single-rule check in place of the advice each finding repeats."""
+    group_by: tuple[str, ...] = ()
+    """Dotted ``expected`` keys naming the decision several findings share; the
+    first one a finding carries labels its group in a single-rule check."""
+    subject: str = ""
+    """Names one finding in a single-rule check, with dotted ``expected`` keys in
+    braces: ``{class}.{method}``. The message stands in when a key is missing."""
 
 
 @dataclass(frozen=True, slots=True)

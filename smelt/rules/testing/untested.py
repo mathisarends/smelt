@@ -43,4 +43,8 @@ class MissingMirrorTest(Rule):
             "tests.mirror_suffixes",
             "project.test_roots",
         ),
+        smell="A module with real function bodies has no test file at its mirrored path.",
+        no_smell="A module another test deliberately covers: mark it with # smelt: ignore-file[TST012] -- <reason>, or turn the rule off for its package.",
+        repair="Add the mirrored test file with tests of the module's behaviour.",
+        subject="add {test_path}",
     )

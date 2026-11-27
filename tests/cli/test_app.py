@@ -1079,7 +1079,7 @@ class TestCheckCommand:
         )
         monkeypatch.chdir(clean_project)
 
-        _, text, _ = _run(capsys, "check", "--select", "ARC012")
+        _, text, _ = _run(capsys, "check", "--select", "ARC012", "--verbose")
         _, output, _ = _run(capsys, "check", "--select", "ARC012", "--format", "json")
         _, statistics, _ = _run(capsys, "check", "--select", "ARC012", "--statistics")
 

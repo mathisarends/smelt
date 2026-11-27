@@ -53,4 +53,9 @@ class PreferErrorName(Rule):
             "Name exception classes with an Error suffix and their module errors"
         ),
         config=("rules", "style.overrides"),
+        smell="An exception class ends in Exception, or a module or package is named exception or exceptions.",
+        no_smell="A published name that code outside the project imports or catches; keep it with a reasoned suppression.",
+        repair="Rename to the suggested name and update imports, except clauses and exports; merge into an existing errors module.",
+        group_by=("kind",),
+        subject="{name} -> {suggested_name}",
     )
