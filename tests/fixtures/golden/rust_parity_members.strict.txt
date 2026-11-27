@@ -16,6 +16,7 @@ ARC013 app/user.py:None:None error app/user.py is unclassified: No architecture 
 CPX008 app/helpers.py:188:1 hint Name the Browser instance before calling .external()
 IDM003 app/helpers.py:148:1 hint review Base.hook as __call__ with an operation-based class name
 IDM003 app/helpers.py:165:1 hint review Exported.exported_method as __call__ with an operation-based class name
+IDM009 app/helpers.py:129:16 hint `self` is `Browser`, which declares `reflected`; read `self.reflected` directly
 LAY004 app/constants.py:26:None error fix definitions in module have 1 avoidable ordering inversion(s)
 LAY004 app/helpers.py:46:None error fix definitions in module have 1 avoidable ordering inversion(s)
 LAY004 app/helpers.py:64:None error fix definitions in module.Browser#0 have 39 avoidable ordering inversion(s)

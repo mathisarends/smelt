@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Opt in to [`idioms/redundant-getattr` (IDM009)](docs/rules/IDM009.md) to
+  report literal `getattr(obj, "name")`, `getattr(obj, "name", default)` and
+  `hasattr(obj, "name")` calls in production code when every project class of
+  the receiver's declared type declares the attribute. Receiver types come from
+  annotations, method receivers, constructors, loop targets and type aliases;
+  `Any`, `object`, type parameters, outside classes, optional receivers and
+  union members without the attribute stay quiet.
 - Enable [`modeling/prefer-error-name` (MOD013)](docs/rules/MOD013.md) to
   name exception classes with an Error suffix and their modules `errors` instead
   of `exceptions`.

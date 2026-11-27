@@ -128,6 +128,7 @@ rules:
   idioms/missing-interface-docstring: warning
   idioms/prefer-callable-instance: hint
   idioms/prefer-match-type-dispatch: error
+  idioms/redundant-getattr: warning
   idioms/redundant-name-alias: warning
 
   # Import through the owning package where it exposes an API.

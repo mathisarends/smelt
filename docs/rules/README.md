@@ -34,6 +34,7 @@
 | [IDM006](IDM006.md) | idioms/missing-broad-except-reason | idioms | explicit | hint |
 | [IDM007](IDM007.md) | idioms/duplicate-narrowing-assert | idioms | explicit | warning |
 | [IDM008](IDM008.md) | idioms/loop-invariant-collection | idioms | explicit | hint |
+| [IDM009](IDM009.md) | idioms/redundant-getattr | idioms | explicit | hint |
 | [IMP001](IMP001.md) | imports/excess-package-imports | imports | explicit | hint |
 | [IMP002](IMP002.md) | imports/excess-module-imports | imports | explicit | hint |
 | [IMP003](IMP003.md) | imports/forbidden-import-style | imports | explicit | error |

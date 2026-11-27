@@ -40,9 +40,19 @@ impl<'a> BindingCounts<'a> {
 
     /// `binding_counts(ast.Module(body=statements))`.
     pub fn of_statements(statements: impl IntoIterator<Item = &'a Stmt>) -> Self {
+        Self::counted(statements, Coverage::Full)
+    }
+
+    /// Only the direct bindings in `statements`, so attribute writes leave their
+    /// receiver unbound.
+    pub fn direct_of_statements(statements: impl IntoIterator<Item = &'a Stmt>) -> Self {
+        Self::counted(statements, Coverage::Direct)
+    }
+
+    fn counted(statements: impl IntoIterator<Item = &'a Stmt>, coverage: Coverage) -> Self {
         let mut counter = Counter {
             counts: HashMap::new(),
-            coverage: Coverage::Full,
+            coverage,
         };
         for statement in statements {
             counter.visit_stmt(statement);

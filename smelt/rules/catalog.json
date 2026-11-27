@@ -568,6 +568,23 @@
     "activation": null
   },
   {
+    "target": "smelt.rules.structure.attribute_reflection:RedundantGetattr",
+    "code": "IDM009",
+    "name": "idioms/redundant-getattr",
+    "category": "idioms",
+    "default_severity": "hint",
+    "requires": [
+      "files",
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "architecture_scoped": false,
+    "scope": "source",
+    "fix_availability": "none",
+    "summary": "A literal getattr or hasattr reads an attribute that the receiver's declared project type always has.",
+    "activation": null
+  },
+  {
     "target": "smelt.rules.dependencies.fanout:PackageImportFanout",
     "code": "IMP001",
     "name": "imports/excess-package-imports",
