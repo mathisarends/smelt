@@ -40,6 +40,9 @@ class Plain:
 
     def __init__(self, owner: UserMessage) -> None:
         self.owner = owner
+        self.initialized: str = "ready"
+        self.unset: str
+        self.__private = 1
         if owner.text:
             self.maybe = 1
 
@@ -131,6 +134,7 @@ def test_a_loop_target_over_a_union_collection_needs_every_member(
         "    for message in messages:\n"
         '        getattr(message, "created_at", None)\n',
         'def read(plain: Plain) -> None:\n    getattr(plain.owner, "text", None)\n',
+        'def read(plain: Plain) -> None:\n    getattr(plain, "initialized", None)\n',
         'def read() -> None:\n    message = UserMessage(text="")\n    getattr(message, "text", None)\n',
         'def read(named: Named) -> None:\n    getattr(named, "name", None)\n',
         "class Reader:\n"
@@ -145,6 +149,7 @@ def test_a_loop_target_over_a_union_collection_needs_every_member(
         "quoted-alias",
         "alias-sequence",
         "attribute",
+        "annotated-assignment",
         "constructor",
         "protocol",
         "self",
@@ -180,6 +185,8 @@ def test_hasattr_is_reported_as_always_true(tmp_path: Path) -> None:
         'def read(value: Dynamic) -> None:\n    getattr(value, "kind", None)\n',
         'def read(value: Slotted) -> None:\n    getattr(value, "kind", None)\n',
         'def read(value: Plain) -> None:\n    getattr(value, "label", None)\n',
+        'def read(value: Plain) -> None:\n    getattr(value, "unset", None)\n',
+        'def read(value: Plain) -> None:\n    hasattr(value, "__private")\n',
         'def read(value: Plain) -> None:\n    getattr(value, "maybe", None)\n',
         "def read(value: UserMessage, name: str) -> None:\n    getattr(value, name, None)\n",
         "def read(value: UserMessage) -> None:\n"
@@ -209,6 +216,8 @@ def test_hasattr_is_reported_as_always_true(tmp_path: Path) -> None:
         "getattr-hook",
         "slots",
         "plain-bare-annotation",
+        "bare-initializer-annotation",
+        "mangled-private-name",
         "conditional-init-assignment",
         "dynamic-name",
         "rebound-receiver",

@@ -7,13 +7,19 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-27
+
+See [upgrading from 0.18.0](docs/upgrading.md#0180-to-0190) for hook pins and
+changes to existing rules.
+
 - Opt in to [`idioms/redundant-getattr` (IDM009)](docs/rules/IDM009.md) to
   report literal `getattr(obj, "name")`, `getattr(obj, "name", default)` and
   `hasattr(obj, "name")` calls in production code when every project class of
   the receiver's declared type declares the attribute. Receiver types come from
-  annotations, method receivers, constructors, loop targets and type aliases;
-  `Any`, `object`, type parameters, outside classes, optional receivers and
-  union members without the attribute stay quiet.
+  annotations, method receivers, constructors, loop targets and type aliases.
+  The hint skips `Any`, `object`, type parameters, outside classes, optional
+  receivers and union members without the attribute. It also skips name-mangled
+  private names and annotations in `__init__` that assign no value.
 - Enable [`modeling/prefer-error-name` (MOD013)](docs/rules/MOD013.md) to
   name exception classes with an Error suffix and their modules `errors` instead
   of `exceptions`.
@@ -25,7 +31,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   one family.
 - Define [project rules](docs/project-rules.md) with `Rule` and `calls.to(...)`,
   load their module with `plugins`, and select them by name under `rules`.
-  Smelt runs each listed module as Python, so helpers and loops can build rules.
+  Smelt runs each listed module as Python, so helpers, loops and dataclasses
+  with deferred annotations can build rules.
 - [`idioms/prefer-match-type-dispatch` (IDM002)](docs/rules/IDM002.md) also
   reports a run of adjacent `if isinstance(...)` guards on one subject when each
   guard body ends in `return` or `raise`. A `return` or `raise` right after the
@@ -1783,7 +1790,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/mathisarends/smelt/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/mathisarends/smelt/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/mathisarends/smelt/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/mathisarends/smelt/compare/v0.16.0...v0.16.1

@@ -101,12 +101,20 @@ def _exported(path: Path, store: SourceStore) -> list[Rule]:
     spec = ModuleSpec(f"smelt_project_rules_{path.stem}", loader, origin=str(path))
     spec.has_location = True
     module = module_from_spec(spec)
+    # Decorators such as dataclass look up their defining module during execution.
+    previous = sys.modules.get(spec.name, module)
+    sys.modules[spec.name] = module
     try:
         # A report on stdout stays parseable when a rule module prints.
         with redirect_stdout(sys.stderr):
             loader.exec_module(module)
     except Exception as exc:  # Project code can fail in any way; report it as policy.
         raise ValueError(_failure(exc, path)) from exc
+    finally:
+        if previous is module:
+            sys.modules.pop(spec.name, None)
+        else:
+            sys.modules[spec.name] = previous
     exported = getattr(module, "rules", None)
     if not isinstance(exported, list | tuple) or not all(
         isinstance(rule, Rule) for rule in exported
