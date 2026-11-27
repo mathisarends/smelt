@@ -21,6 +21,8 @@ current configuration and complete rule contracts, see the [README](README.md),
 - `smelt explain` shows `Smell`, `No smell` and `Fix` for rules that define
   them and the command that lists the rule's findings. `--format json` adds
   `smell`, `no_smell` and `repair`.
+- Checks with a YAML naming policy reuse one file listing per project snapshot.
+  Checking repeated and overlapping function signatures with CPX009 is faster.
 
 ## [0.19.0] - 2026-11-27
 

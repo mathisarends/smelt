@@ -457,20 +457,16 @@ fn baseline_findings(
         return Ok(Vec::new());
     }
     request.root = root;
-    // Like the Python engine, judge a revision only when it has files to check.
-    if !has_check_paths(&request)? {
-        return Ok(Vec::new());
-    }
-    let before = check(&request, ignore, false, true)?;
-    Ok(with_lines(&request.root, before.violations))
-}
-
-/// Whether the project has a source, test or named YAML file to check.
-fn has_check_paths(request: &Request) -> Result<bool, String> {
-    let files = FileIndex::discover(request)?;
-    Ok(!files.sources.is_empty()
-        || !files.tests.is_empty()
-        || (request.file_naming.checks_yaml() && !files.yaml_paths().is_empty()))
+    let findings = with_files(&request, |files| {
+        if files.sources.is_empty()
+            && files.tests.is_empty()
+            && (!request.file_naming.checks_yaml() || files.yaml_paths().is_empty())
+        {
+            return Ok(Vec::new());
+        }
+        Ok(check_files(&request, files, ignore, false, true)?.violations)
+    })?;
+    Ok(with_lines(&request.root, findings))
 }
 
 /// Each finding with the text of its line, as the Python engine fingerprints it.
@@ -524,12 +520,26 @@ fn check(
     configuration_findings: bool,
     with_rules: bool,
 ) -> Result<Outcome, Failure> {
-    let _listings = vfs::ListingCache::enable();
-    with_analysis_pool(|| check_in_pool(request, ignore, configuration_findings, with_rules))?
+    with_files(request, |files| {
+        check_files(request, files, ignore, configuration_findings, with_rules)
+    })
 }
 
-fn check_in_pool(
+/// Discover files once per snapshot and share directory listings through analysis.
+fn with_files<R: Send>(
     request: &Request,
+    work: impl FnOnce(FileIndex) -> Result<R, Failure> + Send,
+) -> Result<R, Failure> {
+    let _listings = vfs::ListingCache::enable();
+    with_analysis_pool(|| {
+        let files = profile::time("discover files", || FileIndex::discover(request))?;
+        work(files)
+    })?
+}
+
+fn check_files(
+    request: &Request,
+    files: FileIndex,
     ignore: &[String],
     configuration_findings: bool,
     with_rules: bool,
@@ -537,7 +547,6 @@ fn check_in_pool(
     let mut catalog: Vec<CatalogRule> =
         serde_json::from_str(CATALOG).map_err(|error| error.to_string())?;
     catalog.extend(request.project_rules.iter().map(CatalogRule::from));
-    let files = profile::time("discover files", || FileIndex::discover(request))?;
     let contracts = profile::time("resolve contracts", || Contracts::resolve(request, &files))?;
     let settings = Settings::new(&catalog, request);
     let ignored = |rule: &&CatalogRule| !with_rules || ignore.contains(&rule.code);
@@ -1038,7 +1047,7 @@ fn check_in_pool(
         .chain(files.tests.keys().cloned())
         .collect();
     if request.file_naming.checks_yaml() {
-        paths.extend(files.yaml_paths());
+        paths.extend_from_slice(files.yaml_paths());
     }
     Ok(Outcome {
         violations: report,
