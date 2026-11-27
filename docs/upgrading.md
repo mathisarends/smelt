@@ -1,5 +1,16 @@
 # Upgrading Smelt
 
+## 0.19.0 to 0.20.0
+
+1. Update your [hook and CI pins](integrations.md) to 0.20.0 and refresh the
+   bundled agent reference with `smelt skill install --force`.
+2. Selecting a single rule now produces a [grouped text report](cli.md#adopting-one-rule).
+   If a script parses the previous finding-by-finding output, add `--verbose`
+   or use `--format concise` or `--format json`.
+3. If you use [LAY004](rules/LAY004.md), review new ordering findings around
+   methods decorated with `abstractmethod`, `cached_property`, `final` or
+   `override`.
+
 ## 0.18.0 to 0.19.0
 
 1. Update your [hook and CI pins](integrations.md) to 0.19.0 and refresh the

@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-27
+
+See [upgrading from 0.19.0](docs/upgrading.md#0190-to-0200) for hook pins and
+changes to the CLI and ordering rule.
+
 - `smelt check --select <one rule>` now prints a rule view in text output: the
   rule's instruction, when a finding is a smell and when it is not, the repair
   once, and the findings grouped by shared decision and file. It lists hints,
@@ -21,6 +26,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 - `smelt explain` shows `Smell`, `No smell` and `Fix` for rules that define
   them and the command that lists the rule's findings. `--format json` adds
   `smell`, `no_smell` and `repair`.
+- [LAY004](docs/rules/LAY004.md) checks method order across methods decorated
+  with `abc.abstractmethod`, `functools.cached_property`, and `final` or
+  `override` from `typing` or `typing_extensions`. For example, it can now
+  report a private abstract method above a public method.
+- Changed and staged checks reuse the baseline file inventory across the
+  comparison.
 - Checks with a YAML naming policy reuse one file listing per project snapshot.
   Checking repeated and overlapping function signatures with CPX009 is faster.
 
@@ -1807,7 +1818,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/mathisarends/smelt/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/mathisarends/smelt/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/mathisarends/smelt/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/mathisarends/smelt/compare/v0.16.1...v0.17.0
