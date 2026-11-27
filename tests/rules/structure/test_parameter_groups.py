@@ -18,6 +18,7 @@ CONFIG = (
 GROUP = (
     "event_name: str, event_type: type, max_queue_size: int, overflow, timeout_seconds"
 )
+ARGUMENTS = "event_name, event_type, max_queue_size, overflow, timeout_seconds"
 
 
 def _check(tmp_path: Path, files: dict[str, str]) -> list[Violation]:
@@ -73,7 +74,29 @@ def test_an_override_family_stays_quiet(tmp_path: Path) -> None:
     )
 
 
-ARGUMENTS = "event_name, event_type, max_queue_size, overflow, timeout_seconds"
+def test_overlapping_groups_keep_all_members_in_source_order(tmp_path: Path) -> None:
+    found = _check(
+        tmp_path,
+        {
+            "app/events.py": f"def first({GROUP}, channel): ...\n"
+            f"def second({GROUP}, origin): ...\n"
+            f"def third({GROUP}, channel): ...\n"
+            f"def fourth({GROUP}, channel, origin): ...\n"
+            f"def fifth({GROUP}, origin): ...\n"
+        },
+    )
+    assert [
+        (entry["parameters"], [loc["function"] for loc in entry["locations"]])
+        for finding in found
+        if (entry := finding.expected) is not None
+    ] == [
+        (sorted([*ARGUMENTS.split(", "), "channel"]), ["first", "third", "fourth"]),
+        (
+            sorted(ARGUMENTS.split(", ")),
+            ["first", "second", "third", "fourth", "fifth"],
+        ),
+        (sorted([*ARGUMENTS.split(", "), "origin"]), ["second", "fourth", "fifth"]),
+    ]
 
 
 def test_a_di_provider_and_super_forwarding_join_the_constructor(

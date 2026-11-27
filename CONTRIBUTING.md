@@ -356,9 +356,14 @@ when the candidate median exceeds the base by both 25% and 0.35 seconds.
 
 The check-latency job times `smelt check` itself: the strict full check of the
 repository and full, staged and changed checks of a generated layered project
-with mirrored tests. It fails when a median exceeds the base by both 25% and 0.1
-seconds. While iterating, time existing installations without rebuilding:
+with mirrored tests and a YAML naming policy for deployment manifests. A
+separate CPX009 workload checks 240 functions with eight
+overlapping signatures and verifies the nine expected group sizes before timing.
+The job fails when a median exceeds the base by both 25% and 0.1 seconds. The
+fixed CPX009 workload also has a 250 ms median budget across releases. While
+iterating, time existing installations without rebuilding:
 `uv run python scripts/benchmark_check.py --smelt base=<path> --smelt candidate=.venv/Scripts/smelt --output check-times.json`.
+Add `--enforce` to apply the same failure thresholds locally.
 Set `SMELT_PROFILE=1` on any check to print how long each core phase and global
 rule took to stderr; the output file also records these profiles.
 

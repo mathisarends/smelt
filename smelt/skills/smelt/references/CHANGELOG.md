@@ -7,6 +7,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Checks with a YAML naming policy reuse one file listing per project snapshot.
+  Checking repeated and overlapping function signatures with CPX009 is faster.
+
 ## [0.19.0] - 2026-11-27
 
 See [upgrading from 0.18.0](docs/upgrading.md#0180-to-0190) for hook pins and

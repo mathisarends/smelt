@@ -6,6 +6,7 @@ use super::vfs;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
+use std::sync::OnceLock;
 
 const SKIP_DIRS: [&str; 5] = ["__pycache__", ".git", ".venv", "venv", "node_modules"];
 const YAML_SKIP_DIRS: [&str; 9] = [
@@ -60,6 +61,7 @@ pub struct FileIndex {
     portions: Vec<Portion>,
     /// The root packages, in configuration order.
     root_packages: Vec<String>,
+    yaml_paths: OnceLock<Vec<String>>,
 }
 
 impl FileIndex {
@@ -147,6 +149,7 @@ impl FileIndex {
             exclude: discovery.exclude,
             portions,
             root_packages: project.root_packages.clone(),
+            yaml_paths: OnceLock::new(),
         })
     }
 
@@ -191,7 +194,7 @@ impl FileIndex {
             "packages": packages,
             "tests": tests,
             "missing_root_packages": missing,
-            "yaml_paths": if yaml { self.yaml_paths() } else { Vec::new() },
+            "yaml_paths": if yaml { self.yaml_paths() } else { &[] },
         })
     }
 
@@ -252,7 +255,11 @@ impl FileIndex {
     }
 
     /// YAML files below the root by name alone; their contents are never read.
-    pub fn yaml_paths(&self) -> Vec<String> {
+    pub fn yaml_paths(&self) -> &[String] {
+        self.yaml_paths.get_or_init(|| self.discover_yaml_paths())
+    }
+
+    fn discover_yaml_paths(&self) -> Vec<String> {
         let mut found = BTreeSet::new();
         let mut visited = HashSet::new();
         let real = vfs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone());

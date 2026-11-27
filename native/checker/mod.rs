@@ -1038,7 +1038,7 @@ fn check_in_pool(
         .chain(files.tests.keys().cloned())
         .collect();
     if request.file_naming.checks_yaml() {
-        paths.extend(files.yaml_paths());
+        paths.extend_from_slice(files.yaml_paths());
     }
     Ok(Outcome {
         violations: report,

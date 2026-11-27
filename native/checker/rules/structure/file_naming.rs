@@ -58,7 +58,7 @@ pub fn check(context: &StructureContext<'_>) -> Vec<StructureFinding> {
                 "Rename to \"{target}\" and update filename references; resolve any existing \
                  destination manually."
             ),
-            path,
+            path: path.clone(),
             expected: Value::Object(expected),
             ..StructureFinding::default()
         });

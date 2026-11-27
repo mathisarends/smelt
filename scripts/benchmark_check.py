@@ -1,9 +1,10 @@
-"""Time `smelt check` end to end on the repository and on a synthetic project.
+"""Time `smelt check` end to end on the repository and on synthetic projects.
 
 Each workload runs a fixed number of times per installation, alternating the
 order. The synthetic project has layered packages, cross-module imports and
 mirrored tests, so discovery, the import graph, coverage and test rules all scale
-with `--modules`. `--smelt NAME=PATH` times existing installations instead of
+with `--modules`. A fixed corpus exercises overlapping parameter groups.
+`--smelt NAME=PATH` times existing installations instead of
 building disposable ones, which is quicker while iterating locally.
 """
 
@@ -25,6 +26,9 @@ from benchmark_installs import git, install, isolated_env
 # A candidate regresses when its median exceeds the base by both margins.
 _MIN_REGRESSION_SECONDS = 0.1
 _MAX_REGRESSION_RATIO = 1.25
+_PARAMETER_GROUPS = "synthetic: overlapping parameter groups"
+# A fixed corpus also catches slowdowns accumulated across several PRs.
+_PARAMETER_GROUP_BUDGET_SECONDS = 0.25
 _LAYERS = ("config", "model", "analysis", "rules", "engine", "cli")
 _CONFIG = """\
 version: 2
@@ -44,6 +48,7 @@ style:
   forbidden_names: [utils, helpers]
   private_modules: forbid
   dataclass_options: [slots]
+  file_naming: {{yaml_extension: yml}}
 
 tests:
   layout: mirror
@@ -54,6 +59,7 @@ rules:
   architecture/uncovered-source: error
   imports/prefer-package-import: warning
   layout/definition-order: error
+  layout/file-name-convention: warning
   layout/forbidden-module-name: error
   layout/forbidden-private-module: error
   layout/callee-before-caller: warning
@@ -133,6 +139,10 @@ def write_corpus(root: Path, modules: int) -> None:
         for layer in _LAYERS:
             (root / package / layer).mkdir()
             (root / package / layer / "__init__.py").write_text("", encoding="utf-8")
+    for layer in _LAYERS:
+        manifests = root / "deploy" / layer
+        manifests.mkdir(parents=True)
+        (manifests / "settings.yml").write_text("enabled: true\n", encoding="utf-8")
     for number in range(modules):
         index = f"{number:05d}"
         layer_index = number * len(_LAYERS) // modules
@@ -171,6 +181,42 @@ def executable(root: Path) -> Path:
     return root / ".venv" / scripts / f"smelt{suffix}"
 
 
+def write_parameter_groups(root: Path) -> None:
+    """240 functions in eight overlapping groups, plus one group shared by all."""
+    package = root / "handlers"
+    package.mkdir(parents=True)
+    (root / "smelt.yml").write_text(
+        "version: 2\nproject: {root_packages: [handlers]}\n"
+        "rules: {complexity/duplicate-parameter-group: hint}\n",
+        encoding="utf-8",
+    )
+    (package / "__init__.py").touch()
+    for module in range(30):
+        functions = [
+            f"def handle_{group}(event, queue, timeout, retries, priority, option_{group}): ..."
+            for group in range(8)
+        ]
+        (package / f"module_{module}.py").write_text(
+            "\n".join(functions) + "\n", encoding="utf-8"
+        )
+
+
+def verify_parameter_groups(smelt: Path, root: Path) -> None:
+    output = subprocess.check_output(  # noqa: S603 - the installation under measurement
+        [str(smelt), "check", "--select", "CPX009", "--show-hints", "--format", "json"],
+        cwd=root,
+    )
+    groups = sorted(
+        item["expected"]["functions"]
+        for item in json.loads(output)["violations"]
+        if item["code"] == "CPX009"
+    )
+    if groups != [30] * 8 + [240]:
+        raise RuntimeError(
+            f"{smelt} reported unexpected parameter group sizes: {groups}"
+        )
+
+
 def run_check(
     smelt: Path, cwd: Path, args: list[str], *, env: dict[str, str]
 ) -> tuple[float, str]:
@@ -202,7 +248,7 @@ def _edit(corpus: Path, sample: int) -> Path:
 
 
 def workloads(
-    self_roots: dict[str, Path], corpus: Path
+    self_roots: dict[str, Path], corpus: Path, parameter_groups: Path
 ) -> dict[str, tuple[dict[str, Path], list[str], bool]]:
     """Each workload's directories by installation, its arguments and whether it edits."""
     corpora = dict.fromkeys(self_roots, corpus)
@@ -213,6 +259,11 @@ def workloads(
             False,
         ),
         "synthetic: full check": (corpora, [], False),
+        _PARAMETER_GROUPS: (
+            dict.fromkeys(self_roots, parameter_groups),
+            ["--select", "CPX009", "--show-hints"],
+            False,
+        ),
         "synthetic: staged edit": (corpora, ["--staged"], True),
         "synthetic: changed edit": (corpora, ["--changed", "--base", "HEAD"], True),
     }
@@ -223,6 +274,7 @@ def benchmark(
     self_roots: dict[str, Path],
     corpus: Path,
     *,
+    parameter_groups: Path,
     repeats: int,
 ) -> tuple[dict[str, dict[str, list[float]]], dict[str, dict[str, str]]]:
     env = {**os.environ}
@@ -230,7 +282,11 @@ def benchmark(
     profiled = {**env, "SMELT_PROFILE": "1"}
     times: dict[str, dict[str, list[float]]] = {}
     profiles: dict[str, dict[str, str]] = {}
-    for workload, (roots, args, edits) in workloads(self_roots, corpus).items():
+    for smelt in smelts.values():
+        verify_parameter_groups(smelt, parameter_groups)
+    for workload, (roots, args, edits) in workloads(
+        self_roots, corpus, parameter_groups
+    ).items():
         samples: dict[str, list[float]] = {name: [] for name in smelts}
         times[workload] = samples
         # The first sample warms file system caches and is not counted.
@@ -277,11 +333,22 @@ def summarize(
         lines.append(
             f"| {workload} | {cells} | {change:+.3f} s ({change / medians[base]:+.1%}) |"
         )
-        if (
+        relative_regression = (
             change > _MIN_REGRESSION_SECONDS
             and medians[candidate] > medians[base] * _MAX_REGRESSION_RATIO
-        ):
+        )
+        over_budget = (
+            workload == _PARAMETER_GROUPS
+            and medians[candidate] > _PARAMETER_GROUP_BUDGET_SECONDS
+        )
+        if relative_regression or over_budget:
             failures.append(workload)
+    lines.extend(
+        [
+            "",
+            f"Overlapping parameter groups budget: {_PARAMETER_GROUP_BUDGET_SECONDS:.3f} s.",
+        ]
+    )
     return "\n".join(lines) + "\n", failures
 
 
@@ -297,6 +364,11 @@ def main() -> None:
         help="time this installed smelt executable instead of building revisions",
     )
     parser.add_argument("--modules", type=int, default=1000)
+    parser.add_argument(
+        "--enforce",
+        action="store_true",
+        help="apply the CI regression checks to existing --smelt installations too",
+    )
     parser.add_argument("--repeats", type=int, default=7)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -307,7 +379,7 @@ def main() -> None:
         parent = Path(temporary)
         if args.smelt:
             smelts = {
-                name: Path(path)
+                name: Path(path).resolve()
                 for name, path in (entry.split("=", 1) for entry in args.smelt)
             }
             self_roots = dict.fromkeys(smelts, repo)
@@ -322,7 +394,15 @@ def main() -> None:
         corpus = parent / "corpus"
         corpus.mkdir()
         write_corpus(corpus, args.modules)
-        times, profiles = benchmark(smelts, self_roots, corpus, repeats=args.repeats)
+        parameter_groups = parent / "parameter-groups"
+        write_parameter_groups(parameter_groups)
+        times, profiles = benchmark(
+            smelts,
+            self_roots,
+            corpus,
+            parameter_groups=parameter_groups,
+            repeats=args.repeats,
+        )
     args.output.write_text(
         json.dumps({"times": times, "profiles": profiles}, indent=2) + "\n",
         encoding="utf-8",
@@ -332,7 +412,7 @@ def main() -> None:
     if summary_path := os.environ.get("GITHUB_STEP_SUMMARY"):
         with Path(summary_path).open("a", encoding="utf-8") as output:
             output.write(table)
-    if failures and not args.smelt:
+    if failures and (not args.smelt or args.enforce):
         sys.exit("Check latency regressed: " + ", ".join(failures))
 
 

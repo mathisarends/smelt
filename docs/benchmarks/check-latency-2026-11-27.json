@@ -1,0 +1,242 @@
+{
+  "base_commit": "ad9c50866f48b44754cde2f268331f690b029f3b",
+  "candidate_native_patch_sha256": "193b1c03ecd2b6dda70d0585abab4b6ad699273b9e280ba83e717dddc7c93c10",
+  "binary_sha256": {
+    "base": "b6d5e3bfd87c3b5a4d18271242ae230fd892444d65a580e5b5c4fbd3e4f07c30",
+    "candidate": "cfe5b538fd4280bfab8bbeb70e0bf2f812de6bb4c2bbf58f81324d6223befc14"
+  },
+  "os": "Windows-11-10.0.26200-SP0",
+  "cpu": "Intel Core Ultra 7 255H",
+  "logical_processors": 16,
+  "python": "3.14.0",
+  "rust": "rustc 1.100.0 (0ef1bc386 2026-11-09)",
+  "method": "Release builds from uv sync --locked. Both executables checked the same candidate source tree without build artifacts. One discarded warm-up per workload and binary, then seven alternating runs. Times in seconds include process launch and report rendering. Profiles were collected separately. The operating system file cache was not flushed.",
+  "synthetic_project": {
+    "modules": 1000,
+    "mirrored_tests": 1000,
+    "layers": 6,
+    "deployment_manifests": 6
+  },
+  "parameter_group_project": {
+    "modules_with_functions": 30,
+    "functions": 240,
+    "expected_group_sizes": [
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      240
+    ],
+    "median_budget_ms": 250
+  },
+  "validation": {
+    "byte_identical_json_reports_for_all_five_workloads": true,
+    "base_only_control_failed_fixed_budget": true,
+    "candidate_passed_ci_thresholds": true
+  },
+  "git_object_storage_experiment": {
+    "method": "One candidate binary checked the same committed synthetic corpus and edits in two disposable repositories. The clone was repacked with git repack -adq. Each mode discarded one warm-up per repository, followed by seven samples in alternating order. This experiment is separate from the base/candidate comparison.",
+    "times_seconds": {
+      "staged": {
+        "loose": [
+          1.0069285000208765,
+          1.1938455000054091,
+          1.3134139000903815,
+          1.210690899984911,
+          1.2896392999682575,
+          1.5607972000725567,
+          1.5046783001162112
+        ],
+        "packed": [
+          0.7208145000040531,
+          2.073421600041911,
+          1.2651174999773502,
+          1.727003199979663,
+          1.3149556000716984,
+          1.0271359998732805,
+          1.4042775998823345
+        ]
+      },
+      "changed": {
+        "loose": [
+          1.0715149999596179,
+          1.3010020998772234,
+          0.738078200025484,
+          1.0310537000186741,
+          0.7919351998716593,
+          0.7113045000005513,
+          0.6766127001028508
+        ],
+        "packed": [
+          1.2265060998033732,
+          0.7722336000297219,
+          0.7723389000166208,
+          0.9431201000697911,
+          0.9241971001029015,
+          0.6634317999705672,
+          0.7113123000599444
+        ]
+      }
+    }
+  },
+  "summary": {
+    "self: strict full check": {
+      "base_median_ms": 256.9,
+      "candidate_median_ms": 258.8,
+      "change_percent": 0.7,
+      "candidate_max_ms": 297.9
+    },
+    "synthetic: full check": {
+      "base_median_ms": 510.1,
+      "candidate_median_ms": 458.0,
+      "change_percent": -10.2,
+      "candidate_max_ms": 598.8
+    },
+    "synthetic: overlapping parameter groups": {
+      "base_median_ms": 4468.9,
+      "candidate_median_ms": 67.3,
+      "change_percent": -98.5,
+      "candidate_max_ms": 154.0
+    },
+    "synthetic: staged edit": {
+      "base_median_ms": 869.9,
+      "candidate_median_ms": 884.7,
+      "change_percent": 1.7,
+      "candidate_max_ms": 948.3
+    },
+    "synthetic: changed edit": {
+      "base_median_ms": 1044.8,
+      "candidate_median_ms": 1080.7,
+      "change_percent": 3.4,
+      "candidate_max_ms": 1921.6
+    }
+  },
+  "times": {
+    "self: strict full check": {
+      "base": [
+        0.21933960006572306,
+        0.223740000044927,
+        0.27602009987458587,
+        0.2569359000772238,
+        0.25326330005191267,
+        0.2906594998203218,
+        0.27457270002923906
+      ],
+      "candidate": [
+        0.23361850017681718,
+        0.21891939989291131,
+        0.23966020019724965,
+        0.2587906001135707,
+        0.2632440999150276,
+        0.2978685002308339,
+        0.2892293001059443
+      ]
+    },
+    "synthetic: full check": {
+      "base": [
+        0.48999429983086884,
+        0.4714436000213027,
+        0.5348855000920594,
+        0.492607899941504,
+        0.5100660999305546,
+        0.5604917998425663,
+        0.5385424999985844
+      ],
+      "candidate": [
+        0.5988064999692142,
+        0.3660991999786347,
+        0.3340008999221027,
+        0.41873899986967444,
+        0.5341928999405354,
+        0.4579632000532001,
+        0.5549421000760049
+      ]
+    },
+    "synthetic: overlapping parameter groups": {
+      "base": [
+        4.5290561998263,
+        5.273560300003737,
+        4.468893700046465,
+        4.581819599959999,
+        3.8628227000590414,
+        4.254668600158766,
+        4.3155797000508755
+      ],
+      "candidate": [
+        0.052150199888274074,
+        0.06109710014425218,
+        0.15403069998137653,
+        0.10036169993691146,
+        0.05773069988936186,
+        0.07443480007350445,
+        0.06732259993441403
+      ]
+    },
+    "synthetic: staged edit": {
+      "base": [
+        0.7638272999320179,
+        0.8507309998385608,
+        0.9240886000916362,
+        0.8698677001520991,
+        0.8051834998186678,
+        0.8827171998564154,
+        0.91962830000557
+      ],
+      "candidate": [
+        0.884680800139904,
+        0.8341224999167025,
+        0.9483260998968035,
+        0.817084199981764,
+        0.9118162000086159,
+        0.9361447999253869,
+        0.6938352000433952
+      ]
+    },
+    "synthetic: changed edit": {
+      "base": [
+        1.0448328000493348,
+        1.5408028000965714,
+        1.08373950002715,
+        0.979160699993372,
+        0.9300069001037627,
+        0.9324503000825644,
+        1.1950995000079274
+      ],
+      "candidate": [
+        1.1115524000488222,
+        1.921642899978906,
+        1.0806715001817793,
+        1.251126900082454,
+        0.9800265999510884,
+        1.0106169998180121,
+        1.0409957999363542
+      ]
+    }
+  },
+  "profiles": {
+    "self: strict full check": {
+      "base": "smelt profile:  start ms   took ms  scope     phase\nsmelt profile:       0.0     255.8  main      native check\nsmelt profile:       0.4       4.0  main      load configuration\nsmelt profile:       6.3      29.3  main      discover files\nsmelt profile:       7.3      21.4  main      list directories\nsmelt profile:      28.7       1.9  main      discover packages\nsmelt profile:      30.7       4.8  main      discover tests\nsmelt profile:      35.6       0.2  main      resolve contracts\nsmelt profile:      37.6      12.3  main      parse sources\nsmelt profile:      49.9      11.5  main      parse tests\nsmelt profile:      61.4      22.3  main      file rules\nsmelt profile:      83.7       0.1  main      architecture model\nsmelt profile:      83.8      12.7  main      import index\nsmelt profile:     124.7       0.0  main      rule ARC011\nsmelt profile:     124.7       0.1  main      rule LAY009\nsmelt profile:     124.8       0.1  main      rule ARC012\nsmelt profile:     124.8       0.0  main      rule LAY001\nsmelt profile:     124.8       2.4  main      rule TYP005\nsmelt profile:     124.8      16.3  main      rule IDM009\nsmelt profile:     124.8       0.9  main      rule MOD009\nsmelt profile:     124.8       0.0  main      rule LAY003\nsmelt profile:     124.8      24.8  main      rule ARC013\nsmelt profile:     124.8      24.8  main      coverage inventory\nsmelt profile:     124.8       0.0  main      rule LAY005\nsmelt profile:     124.9      15.1  main      rule LAY007\nsmelt profile:     124.9      13.0  main      rule MOD001\nsmelt profile:     125.0       8.8  main      rule IMP003\nsmelt profile:     125.0       0.2  main      rule ARC014\nsmelt profile:     125.2       4.9  main      rule MOD002\nsmelt profile:     125.2      39.7  main      rule VIS005\nsmelt profile:     125.3      11.8  main      rule CPX001\nsmelt profile:     125.3      20.1  main      rule TST001\nsmelt profile:     125.6       4.8  main      rule VIS010\nsmelt profile:     125.6       4.6  main      rule MOD013\nsmelt profile:     126.4       5.7  main      rule VIS002\nsmelt profile:     127.2       0.0  main      rule VIS001\nsmelt profile:     128.9       3.5  main      rule TST012\nsmelt profile:     129.5       4.4  main      rule VIS009\nsmelt profile:     130.1       0.1  main      rule VIS011\nsmelt profile:     130.2       7.2  main      rule CPX004\nsmelt profile:     131.1      10.6  main      rule IMP004\nsmelt profile:     131.6       0.1  main      rule VIS004\nsmelt profile:     131.7       8.8  main      rule CPX009\nsmelt profile:     135.2       5.2  main      list coverage directories\nsmelt profile:     144.1       2.1  main      rule ARC006\nsmelt profile:     144.2       1.0  main      rule ARC008\nsmelt profile:     144.2       3.8  main      rule ARC004\nsmelt profile:     144.2       3.6  main      rule ARC007\nsmelt profile:     144.2       1.3  main      rule ARC005\nsmelt profile:     144.3       0.5  main      rule IMP001\nsmelt profile:     144.4       1.4  main      rule ARC003\nsmelt profile:     144.7       0.3  main      rule IMP002\nsmelt profile:     145.5       1.7  main      rule ARC001\nsmelt profile:     176.6      15.7  main      test syntax\nsmelt profile:     192.3       4.2  main      test rules\nsmelt profile:     197.0       1.2  main      suppressions\nsmelt profile:     198.3       6.6  main      configuration findings\nsmelt profile:     205.0       5.9  main      coverage report\nsmelt profile:     238.8       6.2  main      build report\nsmelt profile:     246.3       0.9  main      stop analysis pool\nsmelt profile:     247.4       5.6  main      report\n",
+      "candidate": "smelt profile:  start ms   took ms  scope     phase\nsmelt profile:       0.0     269.9  main      native check\nsmelt profile:       0.4       3.6  main      load configuration\nsmelt profile:       6.1      24.4  main      discover files\nsmelt profile:       7.3      16.4  main      list directories\nsmelt profile:      23.7       1.8  main      discover packages\nsmelt profile:      25.5       5.0  main      discover tests\nsmelt profile:      30.5       0.5  main      resolve contracts\nsmelt profile:      33.3      12.2  main      parse sources\nsmelt profile:      45.5      13.1  main      parse tests\nsmelt profile:      58.7      22.7  main      file rules\nsmelt profile:      81.4       0.1  main      architecture model\nsmelt profile:      81.5      11.0  main      import index\nsmelt profile:     124.2       0.0  main      rule ARC011\nsmelt profile:     124.2      16.2  main      rule IDM009\nsmelt profile:     124.3      10.0  main      rule CPX004\nsmelt profile:     124.3       0.1  main      rule ARC014\nsmelt profile:     124.3       0.1  main      rule LAY009\nsmelt profile:     124.3       8.5  main      rule IMP003\nsmelt profile:     124.3       8.3  main      rule CPX001\nsmelt profile:     124.3       0.0  main      rule LAY001\nsmelt profile:     124.3       0.1  main      rule ARC012\nsmelt profile:     124.3      14.6  main      rule CPX009\nsmelt profile:     124.3       3.3  main      rule TYP005\nsmelt profile:     124.3       0.0  main      rule LAY003\nsmelt profile:     124.3      24.4  main      rule ARC013\nsmelt profile:     124.3      24.4  main      coverage inventory\nsmelt profile:     124.4       0.0  main      rule LAY005\nsmelt profile:     124.4      14.1  main      rule MOD001\nsmelt profile:     124.4      11.7  main      rule LAY007\nsmelt profile:     124.4      42.6  main      rule VIS005\nsmelt profile:     124.6       3.2  main      rule VIS002\nsmelt profile:     124.6       0.0  main      rule VIS001\nsmelt profile:     124.6      11.0  main      rule IMP004\nsmelt profile:     125.3       1.1  main      rule MOD009\nsmelt profile:     125.6      10.0  main      rule TST001\nsmelt profile:     125.6       0.1  main      rule VIS004\nsmelt profile:     126.4       1.1  main      rule MOD013\nsmelt profile:     127.2      10.0  main      list coverage directories\nsmelt profile:     127.8       5.3  main      rule TST012\nsmelt profile:     129.5       1.7  main      rule MOD002\nsmelt profile:     129.6       1.7  main      rule VIS010\nsmelt profile:     129.9       3.6  main      rule VIS009\nsmelt profile:     129.9       0.1  main      rule VIS011\nsmelt profile:     143.0       1.6  main      rule ARC001\nsmelt profile:     143.0       0.9  main      rule ARC006\nsmelt profile:     143.0       0.2  main      rule ARC008\nsmelt profile:     143.1       2.7  main      rule ARC004\nsmelt profile:     143.1       0.4  main      rule IMP001\nsmelt profile:     143.1       1.5  main      rule ARC003\nsmelt profile:     143.1       0.2  main      rule IMP002\nsmelt profile:     143.1       2.1  main      rule ARC007\nsmelt profile:     143.1       0.8  main      rule ARC005\nsmelt profile:     179.8      17.0  main      test syntax\nsmelt profile:     196.8       7.1  main      test rules\nsmelt profile:     204.4       2.7  main      suppressions\nsmelt profile:     207.2       9.2  main      configuration findings\nsmelt profile:     216.4       7.3  main      coverage report\nsmelt profile:     255.8       2.8  main      build report\nsmelt profile:     260.0       0.8  main      stop analysis pool\nsmelt profile:     260.9       6.9  main      report\n"
+    },
+    "synthetic: full check": {
+      "base": "smelt profile:  start ms   took ms  scope     phase\nsmelt profile:       0.0     782.4  main      native check\nsmelt profile:       0.6       4.2  main      load configuration\nsmelt profile:       7.0      17.1  main      discover files\nsmelt profile:       7.4       4.4  main      list directories\nsmelt profile:      11.8       6.7  main      discover packages\nsmelt profile:      18.5       5.6  main      discover tests\nsmelt profile:      24.1       0.0  main      resolve contracts\nsmelt profile:      24.9      60.9  main      parse sources\nsmelt profile:      85.8      44.7  main      parse tests\nsmelt profile:     130.5      35.3  main      file rules\nsmelt profile:     165.8       0.8  main      architecture model\nsmelt profile:     166.7      10.2  main      import index\nsmelt profile:     248.4       0.0  main      rule ARC011\nsmelt profile:     248.4      24.3  main      rule ARC013\nsmelt profile:     248.4      24.3  main      coverage inventory\nsmelt profile:     248.6      67.3  main      rule CPX004\nsmelt profile:     248.6       0.3  main      rule VIS001\nsmelt profile:     248.9       0.5  main      rule VIS002\nsmelt profile:     248.9     160.3  main      rule VIS005\nsmelt profile:     249.0      16.6  main      rule LAY007\nsmelt profile:     249.1      15.7  main      rule VIS009\nsmelt profile:     250.0     103.7  main      rule TST001\nsmelt profile:     250.1       2.3  main      rule TYP005\nsmelt profile:     250.5      58.0  main      rule CPX001\nsmelt profile:     250.6       6.2  main      rule MOD009\nsmelt profile:     250.6       0.1  main      rule LAY001\nsmelt profile:     250.7      35.3  main      rule IMP004\nsmelt profile:     250.7       0.1  main      rule LAY003\nsmelt profile:     256.7       1.8  main      list coverage directories\nsmelt profile:     371.1      11.8  main      rule ARC001\nsmelt profile:     371.5      18.1  main      rule ARC004\nsmelt profile:     441.2      29.3  main      test syntax\nsmelt profile:     470.5       1.4  main      test rules\nsmelt profile:     473.8       4.1  main      suppressions\nsmelt profile:     478.6      29.1  main      configuration findings\nsmelt profile:     507.7      35.2  main      coverage report\nsmelt profile:     602.3      53.8  main      build report\nsmelt profile:     660.2       1.5  main      stop analysis pool\nsmelt profile:     661.8     113.6  main      report\n",
+      "candidate": "smelt profile:  start ms   took ms  scope     phase\nsmelt profile:       0.0     537.9  main      native check\nsmelt profile:       0.4       3.9  main      load configuration\nsmelt profile:       6.6      16.3  main      discover files\nsmelt profile:       6.9       4.2  main      list directories\nsmelt profile:      11.1       6.0  main      discover packages\nsmelt profile:      17.1       5.8  main      discover tests\nsmelt profile:      22.9       0.0  main      resolve contracts\nsmelt profile:      23.8      49.4  main      parse sources\nsmelt profile:      73.2      42.1  main      parse tests\nsmelt profile:     115.3      25.4  main      file rules\nsmelt profile:     140.6       0.8  main      architecture model\nsmelt profile:     141.4      19.1  main      import index\nsmelt profile:     233.6       0.0  main      rule ARC011\nsmelt profile:     233.6      16.7  main      rule LAY007\nsmelt profile:     233.6      12.6  main      rule IMP004\nsmelt profile:     233.6       0.2  main      rule VIS001\nsmelt profile:     233.6      56.7  main      rule TST001\nsmelt profile:     233.6      24.2  main      rule CPX004\nsmelt profile:     233.6      20.9  main      rule ARC013\nsmelt profile:     233.6      20.9  main      coverage inventory\nsmelt profile:     233.6       0.1  main      rule LAY001\nsmelt profile:     233.7      22.9  main      rule TYP005\nsmelt profile:     233.7       0.1  main      rule LAY003\nsmelt profile:     233.8       2.8  main      rule MOD009\nsmelt profile:     233.8       6.9  main      rule CPX001\nsmelt profile:     233.8       0.3  main      rule VIS002\nsmelt profile:     234.1      56.9  main      rule VIS005\nsmelt profile:     234.1      10.9  main      rule VIS009\nsmelt profile:     242.2       3.5  main      list coverage directories\nsmelt profile:     251.5      17.2  main      rule ARC001\nsmelt profile:     251.6      21.1  main      rule ARC004\nsmelt profile:     306.2      24.1  main      test syntax\nsmelt profile:     330.3       0.6  main      test rules\nsmelt profile:     332.2       0.4  main      suppressions\nsmelt profile:     333.1      29.6  main      configuration findings\nsmelt profile:     362.6      28.4  main      coverage report\nsmelt profile:     417.5      12.7  main      build report\nsmelt profile:     433.7       0.9  main      stop analysis pool\nsmelt profile:     434.7      98.2  main      report\n"
+    },
+    "synthetic: overlapping parameter groups": {
+      "base": "smelt profile:  start ms   took ms  scope     phase\nsmelt profile:       0.0    3629.8  main      native check\nsmelt profile:       0.8       3.7  main      load configuration\nsmelt profile:       7.1       2.8  main      discover files\nsmelt profile:       7.4       1.3  main      list directories\nsmelt profile:       8.7       1.0  main      discover packages\nsmelt profile:       9.8       0.1  main      discover tests\nsmelt profile:       9.9       0.0  main      resolve contracts\nsmelt profile:      10.2       6.2  main      parse sources\nsmelt profile:      16.4       0.2  main      file rules\nsmelt profile:      16.7       0.1  main      architecture model\nsmelt profile:      16.7    3599.2  main      rule CPX009\nsmelt profile:    3616.1       0.2  main      suppressions\nsmelt profile:    3616.2       0.0  main      configuration findings\nsmelt profile:    3616.2       3.0  main      coverage report\nsmelt profile:    3616.3       2.4  main      coverage inventory\nsmelt profile:    3617.9       0.4  main      list coverage directories\nsmelt profile:    3619.4       0.8  main      build report\nsmelt profile:    3620.4       1.0  main      stop analysis pool\nsmelt profile:    3621.4       8.0  main      report\n",
+      "candidate": "smelt profile:  start ms   took ms  scope     phase\nsmelt profile:       0.0      38.7  main      native check\nsmelt profile:       1.5       6.6  main      load configuration\nsmelt profile:      11.2       2.6  main      discover files\nsmelt profile:      11.6       0.8  main      list directories\nsmelt profile:      12.4       1.3  main      discover packages\nsmelt profile:      13.7       0.2  main      discover tests\nsmelt profile:      13.8       0.0  main      resolve contracts\nsmelt profile:      14.2       2.1  main      parse sources\nsmelt profile:      16.4       0.4  main      file rules\nsmelt profile:      16.7       0.0  main      architecture model\nsmelt profile:      16.8       5.0  main      rule CPX009\nsmelt profile:      21.9       0.1  main      suppressions\nsmelt profile:      22.1       0.0  main      configuration findings\nsmelt profile:      22.1       2.0  main      coverage report\nsmelt profile:      22.1       1.4  main      coverage inventory\nsmelt profile:      22.9       0.3  main      list coverage directories\nsmelt profile:      24.5       0.9  main      build report\nsmelt profile:      25.9       0.7  main      stop analysis pool\nsmelt profile:      26.7      11.6  main      report\n"
+    },
+    "synthetic: staged edit": {
+      "base": "smelt profile:  start ms   took ms  scope     phase\nsmelt profile:       0.0     791.9  main      native check\nsmelt profile:       0.0     202.4  main      capture staged index\nsmelt profile:     202.8       2.1  main      load configuration\nsmelt profile:     205.9     180.0  baseline  mount base revision\nsmelt profile:     206.4       6.1  main      discover files\nsmelt profile:     206.4       0.0  main      list directories\nsmelt profile:     206.5       3.4  main      discover packages\nsmelt profile:     209.9       2.6  main      discover tests\nsmelt profile:     212.5       0.0  main      resolve contracts\nsmelt profile:     212.7      28.7  main      parse sources\nsmelt profile:     241.4      10.2  main      parse tests\nsmelt profile:     251.6      35.8  main      file rules\nsmelt profile:     287.4       1.9  main      architecture model\nsmelt profile:     289.3       9.2  main      import index\nsmelt profile:     343.2       0.0  main      rule ARC011\nsmelt profile:     343.3       9.4  main      rule ARC013\nsmelt profile:     343.3       9.4  main      coverage inventory\nsmelt profile:     343.3      15.3  main      rule CPX001\nsmelt profile:     343.3      10.6  main      rule CPX004\nsmelt profile:     343.3      25.7  main      rule TST001\nsmelt profile:     343.3       9.2  main      rule LAY007\nsmelt profile:     343.3       0.2  main      rule VIS001\nsmelt profile:     343.5       4.5  main      rule MOD009\nsmelt profile:     343.5       0.2  main      rule VIS002\nsmelt profile:     343.7       0.1  main      rule LAY001\nsmelt profile:     343.7      49.2  main      rule VIS005\nsmelt profile:     343.7       0.1  main      rule LAY003\nsmelt profile:     343.7       0.5  main      rule TYP005\nsmelt profile:     343.8      14.0  main      rule VIS009\nsmelt profile:     344.5       9.5  main      rule IMP004\nsmelt profile:     346.9       0.0  main      list coverage directories\nsmelt profile:     371.9       5.4  main      rule ARC001\nsmelt profile:     373.7      10.8  main      rule ARC004\nsmelt profile:     388.3       0.0  baseline  list directories\nsmelt profile:     388.3       4.1  baseline  discover packages\nsmelt profile:     392.4       3.2  baseline  discover tests\nsmelt profile:     399.8      15.6  baseline  discover files\nsmelt profile:     399.9       0.0  baseline  list directories\nsmelt profile:     399.9      10.5  baseline  discover packages\nsmelt profile:     410.4       4.9  baseline  discover tests\nsmelt profile:     414.6      53.3  main      test syntax\nsmelt profile:     415.3       0.0  baseline  resolve contracts\nsmelt profile:     418.4      18.8  baseline  parse sources\nsmelt profile:     437.2       8.0  baseline  parse tests\nsmelt profile:     445.1      22.4  baseline  file rules\nsmelt profile:     467.5       0.9  baseline  architecture model\nsmelt profile:     467.9       7.6  main      test rules\nsmelt profile:     468.4      14.5  baseline  import index\nsmelt profile:     483.0       3.6  main      suppressions\nsmelt profile:     486.9       0.0  main      configuration findings\nsmelt profile:     487.0      38.5  main      coverage report\nsmelt profile:     542.8      24.7  main      build report\nsmelt profile:     551.1       0.0  baseline  rule ARC011\nsmelt profile:     551.1      12.6  baseline  rule ARC013\nsmelt profile:     551.1      12.6  baseline  coverage inventory\nsmelt profile:     551.2      26.8  baseline  rule CPX001\nsmelt profile:     551.2       4.5  baseline  rule LAY007\nsmelt profile:     551.2       6.5  baseline  rule MOD009\nsmelt profile:     551.2       0.2  baseline  rule VIS001\nsmelt profile:     551.2      29.6  baseline  rule TST001\nsmelt profile:     551.2      21.3  baseline  rule CPX004\nsmelt profile:     551.2       0.1  baseline  rule LAY001\nsmelt profile:     551.3       0.1  baseline  rule LAY003\nsmelt profile:     551.4       0.2  baseline  rule VIS002\nsmelt profile:     551.4       8.7  baseline  rule IMP004\nsmelt profile:     551.6      26.6  baseline  rule VIS005\nsmelt profile:     551.7       9.6  baseline  rule VIS009\nsmelt profile:     555.3       0.3  baseline  rule TYP005\nsmelt profile:     557.9       0.0  baseline  list coverage directories\nsmelt profile:     569.8       1.5  main      stop analysis pool\nsmelt profile:     587.4      11.5  baseline  rule ARC001\nsmelt profile:     587.4      16.6  baseline  rule ARC004\nsmelt profile:     624.6      22.3  baseline  test syntax\nsmelt profile:     646.9       0.5  baseline  test rules\nsmelt profile:     649.3       0.4  baseline  suppressions\nsmelt profile:     650.2       0.0  baseline  configuration findings\nsmelt profile:     650.2      22.9  baseline  coverage report\nsmelt profile:     694.2      24.1  baseline  build report\nsmelt profile:     721.6       2.5  baseline  stop analysis pool\nsmelt profile:     747.8      36.0  main      report\n",
+      "candidate": "smelt profile:  start ms   took ms  scope     phase\nsmelt profile:       0.0     821.8  main      native check\nsmelt profile:       0.0     269.6  main      capture staged index\nsmelt profile:     270.1       2.4  main      load configuration\nsmelt profile:     273.6     206.6  baseline  mount base revision\nsmelt profile:     274.1      10.1  main      discover files\nsmelt profile:     274.1       0.0  main      list directories\nsmelt profile:     274.2       5.9  main      discover packages\nsmelt profile:     280.0       4.1  main      discover tests\nsmelt profile:     284.1       0.0  main      resolve contracts\nsmelt profile:     285.5      36.1  main      parse sources\nsmelt profile:     321.7      14.0  main      parse tests\nsmelt profile:     335.7      22.4  main      file rules\nsmelt profile:     358.1       1.2  main      architecture model\nsmelt profile:     359.3      12.6  main      import index\nsmelt profile:     433.8       0.0  main      rule ARC011\nsmelt profile:     433.9       9.0  main      rule ARC013\nsmelt profile:     433.9       9.0  main      coverage inventory\nsmelt profile:     433.9      17.9  main      rule CPX004\nsmelt profile:     433.9       0.2  main      rule VIS001\nsmelt profile:     433.9       5.9  main      rule LAY007\nsmelt profile:     433.9      22.2  main      rule TST001\nsmelt profile:     434.0       0.1  main      rule LAY001\nsmelt profile:     434.1       0.1  main      rule LAY003\nsmelt profile:     434.1       0.2  main      rule VIS002\nsmelt profile:     434.2       0.3  main      rule TYP005\nsmelt profile:     434.3      35.9  main      rule VIS005\nsmelt profile:     434.4       2.7  main      rule MOD009\nsmelt profile:     435.1      10.6  main      rule IMP004\nsmelt profile:     436.3      12.8  main      rule VIS009\nsmelt profile:     436.5       0.0  main      list coverage directories\nsmelt profile:     439.0       6.5  main      rule CPX001\nsmelt profile:     448.7       5.4  main      rule ARC001\nsmelt profile:     448.7      12.7  main      rule ARC004\nsmelt profile:     481.9       0.0  baseline  list directories\nsmelt profile:     482.9       6.6  baseline  discover packages\nsmelt profile:     489.5       5.6  baseline  discover tests\nsmelt profile:     492.3      27.2  main      test syntax\nsmelt profile:     497.5       7.3  baseline  discover files\nsmelt profile:     497.5       0.0  baseline  list directories\nsmelt profile:     497.5       4.2  baseline  discover packages\nsmelt profile:     501.7       3.0  baseline  discover tests\nsmelt profile:     504.8       0.0  baseline  resolve contracts\nsmelt profile:     505.1      15.5  baseline  parse sources\nsmelt profile:     519.6       0.8  main      test rules\nsmelt profile:     520.6       3.5  baseline  parse tests\nsmelt profile:     524.1      15.1  baseline  file rules\nsmelt profile:     524.4      14.7  main      suppressions\nsmelt profile:     539.2       0.5  baseline  architecture model\nsmelt profile:     539.5       0.0  main      configuration findings\nsmelt profile:     539.5      44.2  main      coverage report\nsmelt profile:     539.7       3.7  baseline  import index\nsmelt profile:     584.1       0.0  baseline  rule ARC011\nsmelt profile:     584.1       6.3  baseline  rule LAY007\nsmelt profile:     584.1      41.5  baseline  rule CPX004\nsmelt profile:     584.1       9.7  baseline  rule ARC013\nsmelt profile:     584.1       9.7  baseline  coverage inventory\nsmelt profile:     584.1       0.4  baseline  rule VIS001\nsmelt profile:     584.1      72.7  baseline  rule VIS005\nsmelt profile:     584.1      34.4  baseline  rule TST001\nsmelt profile:     584.1       0.4  baseline  rule TYP005\nsmelt profile:     584.1       8.1  baseline  rule VIS009\nsmelt profile:     584.5       0.2  baseline  rule VIS002\nsmelt profile:     585.0       0.1  baseline  rule LAY001\nsmelt profile:     585.1       0.1  baseline  rule LAY003\nsmelt profile:     585.2      12.8  baseline  rule IMP004\nsmelt profile:     585.2       4.4  baseline  rule MOD009\nsmelt profile:     585.2      45.7  baseline  rule CPX001\nsmelt profile:     586.2       0.0  baseline  list coverage directories\nsmelt profile:     601.9       7.0  baseline  rule ARC001\nsmelt profile:     602.3      19.6  baseline  rule ARC004\nsmelt profile:     610.1      10.1  main      build report\nsmelt profile:     624.7       1.4  main      stop analysis pool\nsmelt profile:     673.7      18.7  baseline  test syntax\nsmelt profile:     692.4       0.6  baseline  test rules\nsmelt profile:     694.3       0.9  baseline  suppressions\nsmelt profile:     695.7       0.0  baseline  configuration findings\nsmelt profile:     695.7      24.1  baseline  coverage report\nsmelt profile:     737.6       8.9  baseline  build report\nsmelt profile:     749.3       3.7  baseline  stop analysis pool\nsmelt profile:     776.9      38.1  main      report\n"
+    },
+    "synthetic: changed edit": {
+      "base": "smelt profile:  start ms   took ms  scope     phase\nsmelt profile:       0.0    1012.0  main      native check\nsmelt profile:       0.4       3.1  main      load configuration\nsmelt profile:     183.2      17.7  main      discover files\nsmelt profile:     183.5       3.4  main      list directories\nsmelt profile:     184.2     245.1  baseline  mount base revision\nsmelt profile:     187.0       7.5  main      discover packages\nsmelt profile:     194.5       6.4  main      discover tests\nsmelt profile:     200.9       0.0  main      resolve contracts\nsmelt profile:     201.5      99.5  main      parse sources\nsmelt profile:     301.0      94.5  main      parse tests\nsmelt profile:     395.5      22.2  main      file rules\nsmelt profile:     417.7       0.4  main      architecture model\nsmelt profile:     418.1      18.7  main      import index\nsmelt profile:     430.3       0.0  baseline  list directories\nsmelt profile:     430.3       3.9  baseline  discover packages\nsmelt profile:     434.3       3.5  baseline  discover tests\nsmelt profile:     448.2      31.8  baseline  discover files\nsmelt profile:     448.3       0.1  baseline  list directories\nsmelt profile:     448.4      27.1  baseline  discover packages\nsmelt profile:     475.5       4.5  baseline  discover tests\nsmelt profile:     480.0       0.0  baseline  resolve contracts\nsmelt profile:     480.3      28.5  baseline  parse sources\nsmelt profile:     495.7       0.0  main      rule ARC011\nsmelt profile:     495.7       7.7  main      rule LAY007\nsmelt profile:     495.7      23.8  main      rule CPX004\nsmelt profile:     495.7       0.3  main      rule VIS001\nsmelt profile:     495.7       0.1  main      rule LAY001\nsmelt profile:     495.7      22.7  main      rule TST001\nsmelt profile:     495.7      12.8  main      rule ARC013\nsmelt profile:     495.7      12.8  main      coverage inventory\nsmelt profile:     495.9       0.2  main      rule LAY003\nsmelt profile:     495.9       0.3  main      rule TYP005\nsmelt profile:     495.9      27.2  main      rule CPX001\nsmelt profile:     496.0       0.3  main      rule VIS002\nsmelt profile:     496.0      41.0  main      rule VIS005\nsmelt profile:     496.2      11.0  main      rule VIS009\nsmelt profile:     496.2       4.0  main      rule MOD009\nsmelt profile:     496.3      12.2  main      rule IMP004\nsmelt profile:     500.4       0.9  main      list coverage directories\nsmelt profile:     500.6       5.5  main      rule ARC001\nsmelt profile:     501.4      15.9  main      rule ARC004\nsmelt profile:     508.8      13.8  baseline  parse tests\nsmelt profile:     522.6      18.4  baseline  file rules\nsmelt profile:     540.9       7.6  baseline  architecture model\nsmelt profile:     548.6      17.1  baseline  import index\nsmelt profile:     553.0      60.3  main      test syntax\nsmelt profile:     604.9       0.0  baseline  rule ARC011\nsmelt profile:     604.9       7.7  baseline  rule ARC013\nsmelt profile:     604.9      45.6  baseline  rule CPX004\nsmelt profile:     604.9      51.4  baseline  rule CPX001\nsmelt profile:     604.9      15.6  baseline  rule LAY007\nsmelt profile:     604.9       7.7  baseline  coverage inventory\nsmelt profile:     604.9       0.1  baseline  rule LAY001\nsmelt profile:     605.0       0.1  baseline  rule LAY003\nsmelt profile:     605.2      11.6  baseline  rule IMP004\nsmelt profile:     607.1       0.0  baseline  list coverage directories\nsmelt profile:     608.2       0.2  baseline  rule VIS001\nsmelt profile:     608.2      35.2  baseline  rule VIS005\nsmelt profile:     608.3      26.9  baseline  rule TST001\nsmelt profile:     608.5       0.2  baseline  rule VIS002\nsmelt profile:     608.8       0.3  baseline  rule TYP005\nsmelt profile:     608.8      11.7  baseline  rule VIS009\nsmelt profile:     610.5       2.2  baseline  rule MOD009\nsmelt profile:     613.3       4.5  main      test rules\nsmelt profile:     619.1       0.6  main      suppressions\nsmelt profile:     620.2       0.0  main      configuration findings\nsmelt profile:     620.2      37.4  main      coverage report\nsmelt profile:     676.7      21.2  main      build report\nsmelt profile:     686.6      19.4  baseline  rule ARC001\nsmelt profile:     686.6      16.0  baseline  rule ARC004\nsmelt profile:     699.6       0.9  main      stop analysis pool\nsmelt profile:     727.2      40.1  baseline  test syntax\nsmelt profile:     767.3       0.9  baseline  test rules\nsmelt profile:     770.4       0.4  baseline  suppressions\nsmelt profile:     771.3       0.0  baseline  configuration findings\nsmelt profile:     771.3      25.9  baseline  coverage report\nsmelt profile:     836.8      31.7  baseline  build report\nsmelt profile:     870.9       2.7  baseline  stop analysis pool\nsmelt profile:     895.2     109.7  main      report\n",
+      "candidate": "smelt profile:  start ms   took ms  scope     phase\nsmelt profile:       0.0    1136.5  main      native check\nsmelt profile:       0.4       4.8  main      load configuration\nsmelt profile:     266.4     344.5  baseline  mount base revision\nsmelt profile:     267.9      29.3  main      discover files\nsmelt profile:     268.2      11.3  main      list directories\nsmelt profile:     279.5       9.3  main      discover packages\nsmelt profile:     288.8       8.3  main      discover tests\nsmelt profile:     297.2       0.0  main      resolve contracts\nsmelt profile:     297.8      86.9  main      parse sources\nsmelt profile:     384.7      94.9  main      parse tests\nsmelt profile:     479.7      46.3  main      file rules\nsmelt profile:     526.0       1.3  main      architecture model\nsmelt profile:     527.3       8.9  main      import index\nsmelt profile:     588.0      17.5  main      rule ARC001\nsmelt profile:     589.1      16.9  main      rule ARC004\nsmelt profile:     611.5       0.0  baseline  list directories\nsmelt profile:     611.5       3.8  baseline  discover packages\nsmelt profile:     615.3       4.6  baseline  discover tests\nsmelt profile:     615.6       0.0  main      rule ARC011\nsmelt profile:     615.6      32.6  main      rule ARC013\nsmelt profile:     615.6      32.6  main      coverage inventory\nsmelt profile:     615.6      21.1  main      rule LAY007\nsmelt profile:     615.8       0.2  main      rule VIS001\nsmelt profile:     615.8      27.1  main      rule CPX004\nsmelt profile:     615.8      32.5  main      rule CPX001\nsmelt profile:     615.8      24.5  main      rule TST001\nsmelt profile:     616.0       0.3  main      rule VIS002\nsmelt profile:     616.1       5.5  main      rule MOD009\nsmelt profile:     616.1       0.1  main      rule LAY001\nsmelt profile:     616.2       0.1  main      rule LAY003\nsmelt profile:     616.3      45.7  main      rule VIS005\nsmelt profile:     616.3      15.0  main      rule VIS009\nsmelt profile:     616.4       0.3  main      rule TYP005\nsmelt profile:     616.7      22.2  main      rule IMP004\nsmelt profile:     634.6       3.6  main      list coverage directories\nsmelt profile:     637.8      26.7  baseline  discover files\nsmelt profile:     637.9       0.0  baseline  list directories\nsmelt profile:     637.9      23.0  baseline  discover packages\nsmelt profile:     660.9       3.7  baseline  discover tests\nsmelt profile:     664.6       0.0  baseline  resolve contracts\nsmelt profile:     665.0      19.1  baseline  parse sources\nsmelt profile:     684.1       9.2  baseline  parse tests\nsmelt profile:     691.3      48.7  main      test syntax\nsmelt profile:     693.3      21.1  baseline  file rules\nsmelt profile:     714.4       0.7  baseline  architecture model\nsmelt profile:     715.1      17.7  baseline  import index\nsmelt profile:     740.0      13.5  main      test rules\nsmelt profile:     754.8       3.9  main      suppressions\nsmelt profile:     765.7       0.0  main      configuration findings\nsmelt profile:     765.8      60.3  main      coverage report\nsmelt profile:     808.0       0.0  baseline  rule ARC011\nsmelt profile:     808.0      14.0  baseline  rule ARC013\nsmelt profile:     808.0      14.0  baseline  coverage inventory\nsmelt profile:     808.0      12.6  baseline  rule LAY007\nsmelt profile:     808.3      15.6  baseline  rule CPX004\nsmelt profile:     808.3       1.3  baseline  rule VIS001\nsmelt profile:     808.3       0.1  baseline  rule LAY001\nsmelt profile:     808.3      17.6  baseline  rule IMP004\nsmelt profile:     808.3      29.2  baseline  rule TST001\nsmelt profile:     808.3       7.3  baseline  rule TYP005\nsmelt profile:     808.3      19.2  baseline  rule CPX001\nsmelt profile:     808.3      65.5  baseline  rule VIS005\nsmelt profile:     808.4       0.1  baseline  rule LAY003\nsmelt profile:     808.4      17.1  baseline  rule VIS009\nsmelt profile:     808.4       3.7  baseline  rule VIS002\nsmelt profile:     808.4       2.0  baseline  rule MOD009\nsmelt profile:     811.7       0.0  baseline  list coverage directories\nsmelt profile:     835.5      20.0  baseline  rule ARC001\nsmelt profile:     837.5      18.7  baseline  rule ARC004\nsmelt profile:     847.3       7.8  main      build report\nsmelt profile:     856.6       3.4  main      stop analysis pool\nsmelt profile:     905.4      23.7  baseline  test syntax\nsmelt profile:     929.1       3.9  baseline  test rules\nsmelt profile:     941.7       1.5  baseline  suppressions\nsmelt profile:     944.0       0.0  baseline  configuration findings\nsmelt profile:     944.0      23.3  baseline  coverage report\nsmelt profile:     996.4      14.4  baseline  build report\nsmelt profile:    1014.6       4.0  baseline  stop analysis pool\nsmelt profile:    1038.8      86.6  main      report\n"
+    }
+  }
+}

@@ -58,50 +58,42 @@ pub fn check(context: &StructureContext<'_>) -> Vec<StructureFinding> {
         .flat_map_iter(|&&(source, parsed)| signatures(source, parsed, &namespaces, &definitions))
         .collect();
     let families = Families::of(&signatures);
-    let mut groups: BTreeMap<Vec<usize>, BTreeSet<&str>> = BTreeMap::new();
+    let mut groups = BTreeMap::new();
+    let mut compared = HashSet::new();
     for (index, left) in signatures.iter().enumerate() {
+        // The first occurrence already met every later signature with these names.
+        if !compared.insert(&left.parameters) {
+            continue;
+        }
+        let mut intersections = HashSet::new();
         for right in &signatures[index + 1..] {
-            let shared: BTreeSet<&str> = left
-                .parameters
-                .intersection(&right.parameters)
-                .copied()
-                .collect();
-            if shared.len() < MIN_SIZE {
-                continue;
+            let shared = left.parameters.intersection(&right.parameters);
+            if shared.clone().nth(MIN_SIZE - 1).is_some() {
+                intersections.insert(shared.copied().collect::<BTreeSet<_>>());
             }
+        }
+        for shared in intersections {
             let members: Vec<usize> = signatures
                 .iter()
                 .enumerate()
                 .filter(|(_, signature)| signature.parameters.is_superset(&shared))
                 .map(|(member, _)| member)
                 .collect();
-            if members.len() < MIN_FUNCTIONS || families.count(&signatures, &members) < MIN_FAMILIES
+            if members.len() >= MIN_FUNCTIONS
+                && let std::collections::btree_map::Entry::Vacant(entry) = groups.entry(members)
             {
-                continue;
+                // Both witnesses are members, so their intersection is already
+                // the widest set of names common to every member.
+                let count = families.count(&signatures, entry.key());
+                if count >= MIN_FAMILIES {
+                    entry.insert((shared, count));
+                }
             }
-            // The members' common names are the widest group they share.
-            let common = members[1..].iter().fold(
-                signatures[members[0]].parameters.clone(),
-                |common, &member| {
-                    common
-                        .intersection(&signatures[member].parameters)
-                        .copied()
-                        .collect()
-                },
-            );
-            groups.insert(members, common);
         }
     }
     groups
         .iter()
-        .map(|(members, group)| {
-            report(
-                &signatures,
-                members,
-                group,
-                families.count(&signatures, members),
-            )
-        })
+        .map(|(members, (group, count))| report(&signatures, members, group, *count))
         .collect()
 }
 
