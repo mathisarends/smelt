@@ -259,9 +259,10 @@ def workloads(
             False,
         ),
         "synthetic: full check": (corpora, [], False),
+        # Text output of one selected rule is the Python rule view; time the check.
         _PARAMETER_GROUPS: (
             dict.fromkeys(self_roots, parameter_groups),
-            ["--select", "CPX009", "--show-hints"],
+            ["--select", "CPX009", "--show-hints", "--format", "concise"],
             False,
         ),
         "synthetic: staged edit": (corpora, ["--staged"], True),
