@@ -448,6 +448,23 @@ class TestBaseComparison:
 
         assert violations(repo, CheckOptions(changed=True)) == []
 
+    def test_changed_check_discovers_baseline_packages_once(
+        self,
+        repo: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        monkeypatch.setenv("SMELT_PROFILE", "1")
+
+        assert violations(repo, CheckOptions(changed=True)) == []
+
+        scans = [
+            line.split()[-3]
+            for line in capsys.readouterr().err.splitlines()
+            if line.endswith(" discover packages")
+        ]
+        assert scans.count("baseline") == 1
+
     def test_without_commits_there_is_no_base(self, tmp_path: Path) -> None:
         _git(tmp_path, "init", "-q")
 
