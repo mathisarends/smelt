@@ -16,7 +16,11 @@ const KEYWORDS: [&str; 35] = [
 ];
 
 /// A finding about a named module or package, placed in its architecture role.
-fn named(context: &StructureContext<'_>, module: &str, path: String) -> StructureFinding {
+pub(super) fn named(
+    context: &StructureContext<'_>,
+    module: &str,
+    path: String,
+) -> StructureFinding {
     let info = context.model.info(module);
     StructureFinding {
         path,

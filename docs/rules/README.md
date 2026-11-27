@@ -70,6 +70,7 @@
 | [MOD010](MOD010.md) | modeling/implicit-duration-unit | modeling | explicit | warning |
 | [MOD011](MOD011.md) | modeling/mutable-field-in-frozen-dataclass | modeling | explicit | warning |
 | [MOD012](MOD012.md) | modeling/parallel-record-fields | modeling | explicit | hint |
+| [MOD013](MOD013.md) | modeling/prefer-error-name | modeling | explicit | error |
 | [TST001](TST001.md) | tests/misplaced-test | tests | explicit | error |
 | [TST002](TST002.md) | tests/private-access | tests | explicit | error |
 | [TST003](TST003.md) | tests/forbidden-mock | tests | explicit | error |

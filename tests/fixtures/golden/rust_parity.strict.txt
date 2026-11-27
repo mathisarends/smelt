@@ -637,6 +637,7 @@ IDM001 parity/instance_assignments.py:79:9 error assignment writes 3 instance at
 IDM001 parity/instance_assignments.py:85:9 error assignment writes 2 instance attributes; use separate statements
 IDM001 parity/instance_assignments.py:9:9 error fix assignment writes 2 instance attributes; use separate statements
 IDM001 parity/stateful.py:29:9 error assignment writes 3 instance attributes; use separate statements
+IDM002 parity/dispatch.py:100:5 hint consider match event: for 3 type-dispatch guards that each return or raise
 IDM002 parity/dispatch.py:19:5 hint consider match event: for 4 type-dispatch branches
 IDM002 parity/dispatch.py:31:9 hint consider match value: for 2 type-dispatch branches
 IDM002 parity/dispatch.py:88:13 hint consider match item: for 2 type-dispatch branches
@@ -1976,6 +1977,7 @@ VIS001 parity/dispatch.py:30:5 warning Holder.method is public, but has no obser
 VIS001 parity/dispatch.py:37:1 warning not_chains is public, but has no observed use outside its module
 VIS001 parity/dispatch.py:7:1 warning simple is public, but has no observed use outside its module
 VIS001 parity/dispatch.py:85:1 warning nested is public, but has no observed use outside its module
+VIS001 parity/dispatch.py:99:1 warning exiting_guards is public, but has no observed use outside its module
 VIS001 parity/domain_errors/free/__init__.py:1:1 warning lifted is public, but has no observed use outside its module
 VIS001 parity/domain_errors/free/module.py:1:1 warning lifted is public, but has no observed use outside its module
 VIS001 parity/domain_errors/raising.py:27:1 warning plain is public, but has no observed use outside its module

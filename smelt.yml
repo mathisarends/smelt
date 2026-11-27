@@ -162,6 +162,7 @@ rules:
   # Frozen records can own mutable caches. Review ownership at each finding.
   modeling/mutable-field-in-frozen-dataclass: hint
   modeling/parallel-record-fields: hint
+  modeling/prefer-error-name: error
   modeling/prefer-project-base-class: error
   # A single-value Literal field alone does not establish union membership.
   modeling/prefer-str-enum-discriminator: hint

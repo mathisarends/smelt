@@ -464,7 +464,7 @@
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none",
-    "summary": "Review a same-subject isinstance/elif chain for match/case under an explicit package policy.",
+    "summary": "Review a same-subject isinstance/elif chain or run of exiting isinstance guards for match/case under an explicit package policy.",
     "activation": {
       "description": "style or a package override sets type_dispatch.style to match.",
       "option": "type_dispatch",
@@ -1185,6 +1185,23 @@
     "scope": "source",
     "fix_availability": "none",
     "summary": "Stored sequence fields of one instance are paired by position.",
+    "activation": null
+  },
+  {
+    "target": "smelt.rules.structure.error_names:PreferErrorName",
+    "code": "MOD013",
+    "name": "modeling/prefer-error-name",
+    "category": "modeling",
+    "default_severity": "error",
+    "requires": [
+      "files",
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "architecture_scoped": false,
+    "scope": "source",
+    "fix_availability": "none",
+    "summary": "An exception class or module is named with Exception instead of Error.",
     "activation": null
   },
   {
