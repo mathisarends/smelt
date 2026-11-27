@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-import subprocess
-import sys
+import asyncio
+import gc
+import runpy
+import warnings
 from typing import TYPE_CHECKING
 
 import pytest
@@ -102,53 +104,44 @@ def test_await_assertion_rejects_the_missing_await_mutation(
     tmp_path: Path, missing_await: bool, check_await: bool
 ) -> None:
     assertion = "assert_awaited_once_with" if check_await else "assert_called_once_with"
+    await_prefix = "" if missing_await else "await "
+    test_path = "tests/test_handler.py"
     write_project(
         tmp_path,
         {
             "smelt.yml": "version: 2\nproject:\n  root_packages:\n  - app\nrules:\n  tests/missing-await-assertion: warning\n",
             "app/__init__.py": "",
-            "app/accounts.py": "class Accounts:\n    async def connect(self, key): pass",
-            "app/handler.py": "async def handle(accounts):\n    "
-            + ("" if missing_await else "await ")
-            + "accounts.connect('id')\n    return {'connected': True}",
-            "tests/test_handler.py": "from unittest.mock import AsyncMock\nfrom app.accounts import Accounts\nfrom app.handler import handle\nasync def test_connect():\n    accounts = AsyncMock(spec=Accounts)\n    assert await handle(accounts) == {'connected': True}\n    accounts.connect."
-            + assertion
-            + "('id')",
+            test_path: f"""
+                from unittest.mock import AsyncMock
+
+                class Accounts:
+                    async def connect(self, key): pass
+
+                async def handle(accounts):
+                    {await_prefix}accounts.connect('id')
+                    return {{'connected': True}}
+
+                async def test_connect():
+                    accounts = AsyncMock(spec=Accounts)
+                    assert await handle(accounts) == {{'connected': True}}
+                    accounts.connect.{assertion}('id')
+            """,
         },
     )
     assert [finding.code for finding in violations(tmp_path)] == (
         [] if check_await else ["TST010"]
     )
-    # Capture the mutation's warning as evidence without changing suite policy.
-    executed = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import asyncio, gc, runpy, warnings\n"
-            "test = runpy.run_path('tests/test_handler.py')['test_connect']\n"
-            "with warnings.catch_warnings(record=True) as observed:\n"
-            "    warnings.simplefilter('always')\n"
-            "    try:\n"
-            "        asyncio.run(test())\n"
-            "    except AssertionError:\n"
-            "        print('assertion-failed')\n"
-            "        raise SystemExit(1)\n"
-            "    gc.collect()\n"
-            "    print('unawaited-warning' if any(issubclass(w.category, RuntimeWarning) for w in observed) else 'no-warning')\n",
-        ],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        timeout=10,
-        check=False,
-    )
-    assert executed.returncode == int(missing_await and check_await), (
-        executed.stdout + executed.stderr
-    )
-    assert executed.stdout.strip() == (
-        "assertion-failed"
-        if missing_await and check_await
-        else "unawaited-warning"
-        if missing_await
-        else "no-warning"
+    test_connect = runpy.run_path(str(tmp_path / test_path))["test_connect"]
+    with warnings.catch_warnings(record=True) as observed:
+        warnings.simplefilter("always", RuntimeWarning)
+        if missing_await and check_await:
+            with pytest.raises(AssertionError, match="to have been awaited once"):
+                asyncio.run(test_connect())
+        else:
+            asyncio.run(test_connect())
+        gc.collect()
+
+    assert (
+        any(issubclass(warning.category, RuntimeWarning) for warning in observed)
+        is missing_await
     )
