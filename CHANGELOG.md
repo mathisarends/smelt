@@ -10,6 +10,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 - Define [project rules](docs/project-rules.md) with `Rule` and `calls.to(...)`,
   load their module with `plugins`, and select them by name under `rules`.
   Smelt runs each listed module as Python, so helpers and loops can build rules.
+- [`idioms/prefer-match-type-dispatch` (IDM002)](docs/rules/IDM002.md) also
+  reports a run of adjacent `if isinstance(...)` guards on one subject when each
+  guard body ends in `return` or `raise`. A `return` or `raise` right after the
+  run is reported as the `case _:` fallback. Guards that can fall through, are
+  separated by other statements, test another subject, use `not` or exit with
+  `continue`/`break` stay quiet. The finding's `expected.form` is `elif` or
+  `guard`.
 - Enable [`visibility/deep-package-reexport` (VIS011)](docs/rules/VIS011.md) to
   report initializer re-exports that bypass the immediate subpackage's API.
 - Opt in to [LAY013](docs/rules/LAY013.md) to enforce one uv workspace package

@@ -11,6 +11,8 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from smelt.diagnostics.violation import Violation
+
 OPTIONS = CheckOptions(select=("IDM002",))
 CONFIG = """version: 2
 project: {root_packages: [app], python_version: '3.12'}
@@ -116,3 +118,114 @@ def test_an_added_dispatch_branch_is_not_hidden_by_existing_debt(
     assert len(known) == 1
     assert known[0].expected is not None
     assert len(known[0].expected["dispatch_edges"]) == 3
+
+
+GUARDS = """def convert(event):
+    if isinstance(event, Started):
+        return start(event)
+    if isinstance(event, Delta | Progress) and event.ok:
+        return update(event)
+    if isinstance(event, Finished):
+        raise Done(event)
+"""
+
+
+def _guards(tmp_path: Path, source: str) -> list[Violation]:
+    return violations(
+        write_project(
+            tmp_path,
+            {"smelt.yml": CONFIG, "app/__init__.py": "", "app/events.py": source},
+        ),
+        OPTIONS,
+    )
+
+
+def test_exiting_guards_on_one_subject_form_a_chain(tmp_path: Path) -> None:
+    [finding] = _guards(tmp_path, GUARDS)
+    assert finding.line == 2
+    assert "guards" in finding.message
+    assert finding.hint is not None
+    assert "case _" in finding.hint
+    assert finding.expected is not None
+    assert finding.expected["form"] == "guard"
+    assert finding.expected["fallback"] is None
+    assert [branch["line"] for branch in finding.expected["branches"]] == [2, 4, 6]
+    assert finding.expected["branches"][1]["guard"] == "event.ok"
+
+
+def test_raise_terminated_guards_and_module_level_runs_are_reported(
+    tmp_path: Path,
+) -> None:
+    source = (
+        "if isinstance(value, int):\n    raise A\n"
+        "if isinstance(value, str):\n    raise B\n"
+        "if isinstance(value, bytes):\n    raise C\n"
+    )
+    [finding] = _guards(tmp_path, source)
+    assert finding.expected is not None
+    assert finding.expected["scope"] == "module"
+
+
+def test_a_trailing_return_or_raise_is_recorded_as_the_fallback(
+    tmp_path: Path,
+) -> None:
+    [finding] = _guards(tmp_path, GUARDS + "    raise UnknownEvent(event)\n")
+    assert finding.expected is not None
+    assert finding.expected["fallback"] == 8
+    assert len(finding.expected["branches"]) == 3
+
+
+def test_an_elif_chain_reports_its_form(tmp_path: Path) -> None:
+    [finding] = violations(_project(tmp_path), OPTIONS)
+    assert finding.expected is not None
+    assert finding.expected["form"] == "elif"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        GUARDS.replace("        return update(event)\n", "        update(event)\n"),
+        GUARDS.replace(
+            "        return update(event)\n",
+            "        if event.ok:\n            return update(event)\n",
+        ),
+        GUARDS.replace(
+            "    if isinstance(event, Delta",
+            "    log(event)\n    if isinstance(event, Delta",
+        ),
+        GUARDS.replace("isinstance(event, Delta", "isinstance(other, Delta"),
+        GUARDS.replace("if isinstance(event, Delta", "if not isinstance(event, Delta"),
+        GUARDS.replace(
+            "        return update(event)\n",
+            "        return update(event)\n    else:\n        pass\n",
+        ),
+        "def convert(events):\n    for event in events:\n"
+        "        if isinstance(event, A):\n            continue\n"
+        "        if isinstance(event, B):\n            continue\n"
+        "        if isinstance(event, C):\n            break\n",
+    ],
+    ids=[
+        "fallthrough",
+        "nested-exit",
+        "interleaved",
+        "other-subject",
+        "negative",
+        "else",
+        "loop-exits",
+    ],
+)
+def test_guards_that_are_not_an_elif_chain_stay_quiet(
+    tmp_path: Path, source: str
+) -> None:
+    assert _guards(tmp_path, source) == []
+
+
+def test_a_broken_run_restarts_with_the_next_guard(tmp_path: Path) -> None:
+    source = GUARDS + (
+        "    log(event)\n"
+        "    if isinstance(event, A):\n        return 1\n"
+        "    if isinstance(event, B):\n        return 2\n"
+        "    if isinstance(event, C):\n        return 3\n"
+    )
+    findings = _guards(tmp_path, source)
+    assert [finding.line for finding in findings] == [2, 9]
