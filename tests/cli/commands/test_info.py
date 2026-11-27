@@ -144,3 +144,20 @@ def test_explain_json_omits_the_status_outside_a_project(
     assert data["status"] is None
     assert data["options"] == ["max (default 5)", "style.overrides"]
     assert data["requires_policy"] is None
+
+
+def test_explain_states_when_a_finding_is_a_smell_and_how_to_list_them(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["explain", "MOD013"]) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    brief = [line for line in lines if line.startswith(("Smell:", "No smell:", "Fix:"))]
+    assert [line.split(":")[0] for line in brief] == ["Smell", "No smell", "Fix"]
+    assert "Findings:  smelt check --select MOD013" in lines
+    assert main(["explain", "MOD013", "--format", "json"]) == 0
+    explained = json.loads(capsys.readouterr().out)
+    assert explained["no_smell"].startswith("A published name")
+    assert explained["repair"].startswith("Rename to the suggested name")

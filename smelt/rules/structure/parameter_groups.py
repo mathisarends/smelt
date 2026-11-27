@@ -57,4 +57,7 @@ class DuplicateParameterGroup(Rule):
         ),
         canonical="Pass a group of values that travel together as one named value object",
         config=("rules",),
+        smell="The same five or more parameters are passed together through several unrelated functions.",
+        no_smell="Parameters that only share their names and do not form one concept; keep them separate with a reasoned suppression.",
+        repair="Name the concept as one value object, such as a frozen dataclass, and pass it instead, starting at the outermost caller.",
     )

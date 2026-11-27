@@ -224,6 +224,116 @@ def test_invalid_project_rule_is_a_config_error(
     assert error in capsys.readouterr().err
 
 
+@pytest.fixture
+def exceptions_project(tmp_path: Path) -> Path:
+    return write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+            "app/exceptions.py": (
+                "class ParseException(Exception): ...\n\n\n"
+                "class LoadException(Exception): ...\n"
+            ),
+            "app/errors.py": "class SaveException(Exception): ...\n",
+        },
+    )
+
+
+def test_one_selected_rule_reports_its_brief_and_grouped_findings(
+    exceptions_project: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config = str(exceptions_project / "smelt.yml")
+
+    assert main(["--config", config, "check", "--select", "MOD013"]) == 1
+
+    out = capsys.readouterr().out
+    assert out.startswith(
+        "MOD013 modeling/prefer-error-name · error · off in smelt.yml\n"
+        "Name exception classes with an Error suffix and their module errors\n"
+        "  Smell:    An exception class ends in Exception"
+    )
+    assert "\n4 findings · 2 files · 2 groups\n\nKind: class (3)\n" in out
+    assert "\n  app/errors.py  1 SaveException -> SaveError\n" in out
+    assert (
+        "\n  app/exceptions.py\n"
+        "    1 ParseException -> ParseError · 4 LoadException -> LoadError\n"
+    ) in out
+    # errors.py exists, so the module has no suggested name and keeps its message.
+    assert (
+        "\nKind: module (1)\n"
+        '  app/exceptions.py  module name "exceptions" names errors as exceptions'
+    ) in out
+    assert out.endswith(
+        "Done when this command reports no findings. "
+        "Then enable it: rules: {modeling/prefer-error-name: error}\n"
+        "Details: smelt explain MOD013 · evidence per finding: --verbose\n"
+    )
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("--select", "MOD013", "--verbose"),
+        ("--select", "MOD013", "--format", "concise"),
+        ("--select", "MOD013,TYP006"),
+        ("--select", "modeling"),
+    ],
+)
+def test_other_selections_and_verbose_keep_the_finding_report(
+    exceptions_project: Path,
+    args: tuple[str, ...],
+    *,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config = str(exceptions_project / "smelt.yml")
+
+    assert main(["--config", config, "check", *args]) == 1
+
+    out = capsys.readouterr().out
+    assert "Smell:" not in out
+    assert 'exception class "ParseException" ends in Exception' in out
+
+
+def test_an_enabled_rule_without_findings_names_no_entry_to_add(
+    exceptions_project: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config = exceptions_project / "smelt.yml"
+    config.write_text(
+        "version: 2\nproject: {root_packages: [app]}\n"
+        "rules: {typing/prefer-deferred-annotations: warning}\n",
+        encoding="utf-8",
+    )
+
+    assert main(["--config", str(config), "check", "--select", "TYP006"]) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0] == (
+        "TYP006 typing/prefer-deferred-annotations · warning · on in smelt.yml"
+    )
+    assert lines[-4:] == [
+        "0 findings",
+        "",
+        "No TYP006 findings.",
+        "Details: smelt explain TYP006 · evidence per finding: --verbose",
+    ]
+
+
+def test_native_check_leaves_the_rule_view_to_python(exceptions_project: Path) -> None:
+    if not NATIVE.is_file():
+        pytest.skip("install the native client")
+    selected = ("--select", "MOD013")
+    code, report, fell_back = _check(exceptions_project, selected, native=True)
+
+    assert fell_back
+    assert report.startswith(b"MOD013 modeling/prefer-error-name")
+    assert (code, report) == _check(exceptions_project, selected, native=False)[:2]
+    verbose = (*selected, "--verbose")
+    code, report, fell_back = _check(exceptions_project, verbose, native=True)
+    assert not fell_back
+    assert (code, report) == _check(exceptions_project, verbose, native=False)[:2]
+
+
 def _check(
     root: Path, args: tuple[str, ...], *, native: bool
 ) -> tuple[int, bytes, bool]:

@@ -179,5 +179,15 @@ def _catalog_problems(rule: RuleContract) -> list[str]:
         "config paths must name SmeltConfig fields": all(
             path.split(".")[0] in SmeltConfig.model_fields for path in doc.config
         ),
+        "smell, no_smell and repair must be single lines with a final period": all(
+            "\n" not in text and text.endswith(".")
+            for text in (doc.smell, doc.no_smell, doc.repair)
+            if text
+        ),
+        "a rule brief needs both smell and no_smell": bool(doc.smell)
+        == bool(doc.no_smell)
+        and (not doc.repair or bool(doc.smell)),
+        "subject must name expected keys in braces": not doc.subject
+        or bool(re.search(r"\{[\w.]+\}", doc.subject)),
     }
     return [message for message, passed in checks.items() if not passed]

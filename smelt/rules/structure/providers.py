@@ -20,4 +20,8 @@ class RedundantDishkaProvider(Rule):
             "method that only forwards to it"
         ),
         config=("rules", "style.overrides"),
+        smell="A Dishka provider method only forwards its typed dependencies to one constructor.",
+        no_smell="A factory with initialization logic, finalization or a resource lifecycle, or a constructor whose type hints do not supply the same inputs.",
+        repair="Register the constructor directly as suggested; verify its type hints and keep scope, cache and provides options.",
+        subject="{method} = {suggested_registration}",
     )

@@ -24,4 +24,8 @@ class CallerBeforeCallee(Rule):
             "visibility group"
         ),
         config=("rules", "style.overrides"),
+        smell="A function or method is defined below same-visibility helpers it calls, so the module reads bottom-up.",
+        no_smell="A helper the caller needs at definition time, in a default, decorator or annotation. This is a reading convention, not a correctness check.",
+        repair="Move the caller above its helpers; check --fix does so where definition-time dependencies allow.",
+        subject="{caller}",
     )

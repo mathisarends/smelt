@@ -28,6 +28,8 @@ smelt check --statistics              # findings per rule, hints included
 smelt check --statistics --by member  # findings per uv workspace member, hints included
 smelt check --strict-coverage         # enable architecture/uncovered-source for this run
 smelt check --show-coverage --format json  # include the per-file policy inventory
+smelt check --select CPX001           # one rule: its brief, then its findings by decision
+smelt check --select CPX001 --verbose # the evidence of every finding instead
 smelt check --select TYP003 --fix --unsafe-fixes  # use None-only defaults after review
 smelt check --diff                                # preview the safe fixes
 smelt check --diff --suggestions                  # also show suggested edits --fix never applies
@@ -81,6 +83,44 @@ to an explicit `is not None` conditional only with `--unsafe-fixes`: falsy
 values will be preserved and custom truthiness will no longer be called. Review
 intent first. `--unsafe-fixes` alone performs no writes; `--staged` cannot be
 combined with `--fix` or `--diff`, and `--suggestions` requires `--diff`.
+
+## Adopting one rule
+
+`smelt check --select <code-or-name>` reports one rule in a view made for
+working through it. The rule does not have to be enabled yet.
+
+```text
+MOD013 modeling/prefer-error-name · error · off in smelt.yml
+Name exception classes with an Error suffix and their module errors
+  Smell:    An exception class ends in Exception, or a module or package is named
+            exception or exceptions.
+  No smell: A published name that code outside the project imports or catches; keep it
+            with a reasoned suppression.
+  Fix:      Rename to the suggested name and update imports, except clauses and exports;
+            merge into an existing errors module.
+
+3 findings · 2 files · 2 groups
+
+Kind: class (2)
+  app/orders/exceptions.py
+    4 ParseException -> ParseError · 9 LoadException -> LoadError
+
+Kind: module (1)
+  app/orders/exceptions.py  exceptions -> errors
+
+Done when this command reports no findings. Then enable it: rules: {modeling/prefer-error-name: error}
+Details: smelt explain MOD013 · evidence per finding: --verbose
+```
+
+The view lists hints too. Findings that share a decision form a group, each file
+is named once, and the number before a finding is its line. Advice that every
+finding repeats is printed once as `Fix`. Accepted debt stays hidden; the counts
+name it and `--no-debt` lists it.
+
+A rule without `Smell` and `No smell` text shows its summary and each finding's
+message. `--verbose` prints the usual report with the evidence of every finding
+and lists hints. `--format concise`, `--statistics`, the machine formats and a
+selection of several rules are unchanged.
 
 Exit codes: `0` clean, `1` violations at or above `--fail-on`, `2` config or usage error.
 A config entry that points at nothing (a mistyped package, a missing test root) is a

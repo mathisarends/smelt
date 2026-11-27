@@ -157,6 +157,15 @@ def _rule_page(rule: RuleContract) -> str:
         f"- **Severity when active:** {meta.default_severity.value}",
         f"- **Automatic fix:** {_FIX_AVAILABILITY[meta.fix]}",
         f"- **Guide:** {doc.canonical}",
+        *(
+            f"- **{label}:** {text}"
+            for label, text in (
+                ("Smell", doc.smell),
+                ("No smell", doc.no_smell),
+                ("Fix", doc.repair),
+            )
+            if text
+        ),
         "",
         "## Why",
         "",

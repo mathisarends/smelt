@@ -54,4 +54,7 @@ class PreferDeferredAnnotations(Rule):
         ),
         canonical="Write annotations without quotes and rely on deferred evaluation",
         config=("rules", "style.overrides", "project.python_version"),
+        smell="An annotation is quoted although the module's annotations are deferred, or one future import would defer them.",
+        no_smell="A package that forbids the future import before Python 3.14 keeps its quotes; set future_annotations: forbid for it. Strings in Literal and Annotated metadata are not reported.",
+        repair="Remove the quotes; before Python 3.14 add from __future__ import annotations first and verify runtime annotation consumers.",
     )

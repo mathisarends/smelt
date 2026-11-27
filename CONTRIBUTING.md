@@ -268,6 +268,15 @@ the rule page show it. A rule whose options change that instruction overrides
 `Rule.guide(ctx, target)` and resolves the target's policy through the same
 helper as `check`, returning `None` when the policy does not reach the target.
 
+`smelt check --select <rule>` shows one rule's brief above its findings. Fill
+`RuleDoc.smell` and `no_smell` with one sentence each: what makes a finding a
+real problem, and when it is legitimately kept and how to record that. `repair`
+states the fix once and replaces the advice of the individual findings.
+`group_by` lists dotted `expected` keys that name the decision several findings
+share; `subject` names one finding with keys in braces, such as
+`{class}.{method}`. Take both from the payload the core emits, and check the
+view on a real project.
+
 `RuleDoc` is the documentation source. `engine.check.rule_meta()` supplies the CLI
 and report metadata; there is no separate hand-maintained catalog manifest.
 `rules --format json` exposes analysis requirements and config paths;

@@ -55,4 +55,8 @@ class PreferCallableInstance(Rule):
             "a single public method"
         ),
         config=("rules", "style.overrides"),
+        smell="A plain class has exactly one public method, so its name and the method name describe the same operation twice.",
+        no_smell="A published named API or a class with a stateful lifecycle; keep it with a reasoned suppression or a package override set to off.",
+        repair="Rename the method to __call__ and the class after its operation; keep constructor and call-time arguments apart and update callers and registrations.",
+        subject="{class}.{method}",
     )

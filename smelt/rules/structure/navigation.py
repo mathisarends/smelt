@@ -41,4 +41,12 @@ class DeepObjectNavigation(Rule):
             "instance attributes"
         ),
         config=("rules", "style.navigation", "style.overrides"),
+        smell="A method reaches through one stored collaborator into another, so it depends on how they are wired.",
+        no_smell="Navigating the namespaces of an SDK client, or reading values from a settings or record object. Declare such types once under style.navigation (namespace_types, instance_factories) instead of suppressing each call.",
+        repair="Inject the collaborator the method needs, or ask the direct collaborator to perform the operation; a local variable alone changes nothing.",
+        group_by=(
+            "namespace_evidence.unresolved_type",
+            "namespace_evidence.unresolved_path",
+        ),
+        subject="{callable}",
     )
