@@ -7,6 +7,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Enable [`modeling/prefer-error-name` (MOD013)](docs/rules/MOD013.md) to
+  name exception classes with an Error suffix and their modules `errors` instead
+  of `exceptions`.
 - Define [project rules](docs/project-rules.md) with `Rule` and `calls.to(...)`,
   load their module with `plugins`, and select them by name under `rules`.
   Smelt runs each listed module as Python, so helpers and loops can build rules.

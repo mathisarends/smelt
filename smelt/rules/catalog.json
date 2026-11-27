@@ -1171,6 +1171,23 @@
     "activation": null
   },
   {
+    "target": "smelt.rules.structure.error_names:PreferErrorName",
+    "code": "MOD013",
+    "name": "modeling/prefer-error-name",
+    "category": "modeling",
+    "default_severity": "error",
+    "requires": [
+      "files",
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "architecture_scoped": false,
+    "scope": "source",
+    "fix_availability": "none",
+    "summary": "An exception class or module is named with Exception instead of Error.",
+    "activation": null
+  },
+  {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
     "code": "TST001",
     "name": "tests/misplaced-test",
