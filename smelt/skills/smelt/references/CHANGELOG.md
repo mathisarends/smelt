@@ -7,6 +7,21 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- `smelt check --select <one rule>` now prints a rule view in text output: the
+  rule's instruction, when a finding is a smell and when it is not, the repair
+  once, and the findings grouped by shared decision and file. It lists hints,
+  names hidden debt and ends with the `rules` entry that enables the rule. See
+  [adopting one rule](docs/cli.md#adopting-one-rule). Twelve rules carry the
+  new brief so far; the others show their summary and each finding's message.
+  **Compatibility:** scripts that read the text report of a single selected
+  rule should add `--verbose` or use `--format concise` or `json`, which are
+  unchanged. This view is written by the Python CLI, so it starts slower than
+  other checks.
+- `smelt check --verbose` prints the evidence of every finding and lists hints.
+- `smelt explain` shows `Smell`, `No smell` and `Fix` for rules that define
+  them and the command that lists the rule's findings. `--format json` adds
+  `smell`, `no_smell` and `repair`.
+
 ## [0.19.0] - 2026-11-27
 
 See [upgrading from 0.18.0](docs/upgrading.md#0180-to-0190) for hook pins and

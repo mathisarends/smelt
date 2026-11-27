@@ -29,7 +29,7 @@ use policy::{Catalog, Policy, Resolved, Rule};
 use report::{Diagnostic, Report};
 use serde_json::{Map, Value, json};
 use staged::Staged;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::ffi::OsString;
 use std::io::{self, Write};
@@ -440,6 +440,10 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
     let select = policy
         .selected_codes(&selectors(args.select.as_deref()))
         .map_err(|()| "an unknown --select prefix")?;
+    let distinct: HashSet<&str> = select.iter().copied().collect();
+    if args.rule_view(distinct.len()) {
+        return Err("the rule view of one selected rule");
+    }
     let ignore = policy
         .selected_codes(&selectors(args.ignore.as_deref()))
         .map_err(|()| "an unknown --ignore prefix")?;
@@ -662,7 +666,7 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
         )),
         diagnostics,
     };
-    let show_hints = args.show_hints || args.compares();
+    let show_hints = args.show_hints || args.verbose || args.compares();
     let text = match args.format() {
         Format::Json => report::render_json(&report, args.show_coverage),
         Format::Sarif => report::render_sarif(&report, env!("CARGO_PKG_VERSION")),

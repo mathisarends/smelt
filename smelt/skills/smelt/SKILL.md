@@ -32,6 +32,10 @@ installed skill records the CLI version that installed it.
    below them). Use `--format text` for evidence and import chains, `--format json`
    only when a tool parses the report. Use `smelt explain <code-or-name>` and fix the underlying
    behavior or dependency. Run relevant tests and the project's other checks too.
+   To adopt or tighten one rule, run `smelt check --select <code-or-name>`: it
+   prints the rule's brief (smell, no smell, fix) and its findings grouped by
+   decision, also for a rule that is still off. Resolve them, then add the
+   `rules` entry it names. `--verbose` shows the evidence of each finding.
 4. For branch review use `--changed --base origin/main` (or the actual base).
    For the commit use `smelt check --staged --fail-on warning`; this reads the Git
    index, including partially staged files and policy, rather than the working tree.

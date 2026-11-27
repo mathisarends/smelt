@@ -20,6 +20,7 @@ pub struct Args {
     pub select: Option<String>,
     pub ignore: Option<String>,
     pub show_hints: bool,
+    pub verbose: bool,
     pub no_color: bool,
     pub no_debt: bool,
     pub strict_coverage: bool,
@@ -32,6 +33,11 @@ pub struct Args {
 impl Args {
     pub fn format(&self) -> Format {
         self.format.unwrap_or(Format::Text)
+    }
+
+    /// Whether one selected rule gets the rule view, which the Python CLI writes.
+    pub fn rule_view(&self, selected: usize) -> bool {
+        selected == 1 && self.format() == Format::Text && !self.verbose
     }
 
     /// Whether the check reports only the findings new since a commit.
@@ -51,6 +57,7 @@ fn takes_value(name: &str) -> bool {
 fn flag(args: &mut Args, name: &str) -> Option<()> {
     match name {
         "--show-hints" => args.show_hints = true,
+        "--verbose" => args.verbose = true,
         "--no-color" => args.no_color = true,
         "--no-debt" => args.no_debt = true,
         // The native check keeps no cache.
@@ -209,6 +216,16 @@ mod tests {
             parse(&arguments("check --staged"))
                 .expect("supported")
                 .staged
+        );
+        let detailed = parse(&arguments("check --select CPX001 --verbose")).expect("supported");
+        assert!(!detailed.rule_view(1));
+        let selected = parse(&arguments("check --select CPX001")).expect("supported");
+        assert!(selected.rule_view(1));
+        assert!(!selected.rule_view(2));
+        assert!(
+            !parse(&arguments("check --select CPX001 --format concise"))
+                .expect("supported")
+                .rule_view(1)
         );
         for unsupported in [
             "check --changed --staged",

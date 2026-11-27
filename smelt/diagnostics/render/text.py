@@ -71,6 +71,23 @@ def render_concise(
     )
 
 
+def fixable_summary(violations: list[Violation]) -> list[str]:
+    """How many findings `--fix`, `--unsafe-fixes` and `--suggestions` cover."""
+    counts = Counter(v.fix.applicability for v in violations if v.fix)
+    safe, unsafe = counts[Applicability.SAFE], counts[Applicability.UNSAFE]
+    suggested = counts[Applicability.DISPLAY]
+    parts: list[str] = []
+    if safe and unsafe:
+        parts.append(f"{safe} fixable with --fix, {unsafe} more with --unsafe-fixes")
+    elif safe:
+        parts.append(f"{safe} fixable with --fix")
+    elif unsafe:
+        parts.append(f"{unsafe} fixable with --fix --unsafe-fixes")
+    if suggested:
+        parts.append(f"{_plural(suggested, 'suggestion')} with --diff --suggestions")
+    return parts
+
+
 def _render(
     report: Report,
     read_line: LineReader,
@@ -531,7 +548,7 @@ def _summary(report: Report, style: _Style, *, show_hints: bool) -> str:
     if report.in_debt:
         tail.append(f"{report.in_debt} in debt{scope}")
     tail.append(_plural(report.modules, "module") + scope)
-    tail.extend(_fixable(report.violations))
+    tail.extend(fixable_summary(report.violations))
 
     if errors == 0 and warnings == 0:
         checks = " ".join(style(f"✓ {c.value}", _GREEN) for c in report.categories)
@@ -542,22 +559,6 @@ def _summary(report: Report, style: _Style, *, show_hints: bool) -> str:
     mark = style("✗", _RED) if report.failed else style("!", _YELLOW)
     counts = [_plural(errors, "error"), _plural(warnings, "warning"), hint_text]
     return f"{mark} " + " · ".join([*counts, *tail])
-
-
-def _fixable(violations: list[Violation]) -> list[str]:
-    counts = Counter(v.fix.applicability for v in violations if v.fix)
-    safe, unsafe = counts[Applicability.SAFE], counts[Applicability.UNSAFE]
-    suggested = counts[Applicability.DISPLAY]
-    parts: list[str] = []
-    if safe and unsafe:
-        parts.append(f"{safe} fixable with --fix, {unsafe} more with --unsafe-fixes")
-    elif safe:
-        parts.append(f"{safe} fixable with --fix")
-    elif unsafe:
-        parts.append(f"{unsafe} fixable with --fix --unsafe-fixes")
-    if suggested:
-        parts.append(f"{_plural(suggested, 'suggestion')} with --diff --suggestions")
-    return parts
 
 
 def _plural(count: int, word: str) -> str:

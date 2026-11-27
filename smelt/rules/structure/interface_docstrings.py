@@ -57,4 +57,8 @@ class MissingInterfaceDocstring(Rule):
             "their contract"
         ),
         config=("rules",),
+        smell="An abstract or Protocol method has a placeholder body and no docstring, so its contract is written nowhere.",
+        no_smell="Methods with a default implementation, @overload and @override signatures and property setters are not reported.",
+        repair="Replace the placeholder body with a docstring that states what the method guarantees and requires.",
+        subject="{class}.{method}",
     )

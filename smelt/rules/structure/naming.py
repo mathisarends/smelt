@@ -163,4 +163,8 @@ class RedundantModuleName(Rule):
         canonical="Do not repeat the package name in a module file name",
         config=("rules", "style.overrides"),
         example_language="text",
+        smell="A module file name repeats the name of a package above it, as in cars/application/car_exporter.py.",
+        no_smell="A repetition that carries domain meaning or is a published import path; keep it with a reasoned file suppression or a package override set to off.",
+        repair="Rename the file to the suggested shorter name and update imports and facade exports.",
+        subject="rename to {suggested_name}",
     )

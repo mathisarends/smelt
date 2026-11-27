@@ -15,11 +15,13 @@ from smelt.cli.support import (
     use_color,
 )
 from smelt.diagnostics.render.machine import render_github, render_json, render_sarif
+from smelt.diagnostics.render.rule_view import RuleBrief, render_rule_view
 from smelt.diagnostics.render.text import render_concise, render_text
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions, relative_scope, run_check
 from smelt.engine.fixes import apply_fixes, fix_diff
 from smelt.engine.paths import project_metadata
+from smelt.engine.rule_settings import RuleSettings, rule_usage
 from smelt.engine.staged import staged_project
 
 if TYPE_CHECKING:
@@ -27,6 +29,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from smelt.config import LoadedConfig
+    from smelt.diagnostics.report import LineReader
+    from smelt.engine.check import CheckOutcome
     from smelt.engine.staged import StagedProject
 
 
@@ -132,31 +136,88 @@ def _check_loaded(
             console.print(
                 render_concise(
                     report,
-                    show_hints=args.show_hints or options.changed,
+                    show_hints=args.show_hints or args.verbose or options.changed,
                     statistics=args.statistics,
                     by=args.by,
                 ),
                 end="",
             )
         case _:
-            color = use_color(console.out, disabled=args.no_color)
-            text = render_text(
-                report,
-                read_line,
-                color=color,
-                # Hints on the files just changed are few and relevant.
-                show_hints=args.show_hints or options.changed,
-                statistics=args.statistics,
-                by=args.by,
+            _print_text(
+                args,
+                console,
+                outcome,
+                loaded=loaded,
+                read_line=read_line,
+                changed=options.changed,
             )
-            console.print(text, end="")
-            if args.show_coverage and report.coverage:
-                console.print("Coverage inventory:")
-                for entry in report.coverage.get("inventory", []):
-                    console.print(
-                        f"  {entry['status']}: {entry['path']} — {entry['reason']}"
-                    )
     return EXIT_VIOLATIONS if report.failed else EXIT_OK
+
+
+def _print_text(  # noqa: PLR0913 - one report, its sources and the CLI options
+    args: argparse.Namespace,
+    console: Console,
+    outcome: CheckOutcome,
+    *,
+    loaded: LoadedConfig,
+    read_line: LineReader,
+    changed: bool,
+) -> None:
+    report = outcome.report
+    brief = _rule_brief(args, outcome, loaded)
+    if brief is not None:
+        text = render_rule_view(report, brief, read_line)
+    else:
+        text = render_text(
+            report,
+            read_line,
+            color=use_color(console.out, disabled=args.no_color),
+            # Hints on the files just changed are few and relevant.
+            show_hints=args.show_hints or args.verbose or changed,
+            statistics=args.statistics,
+            by=args.by,
+        )
+    console.print(text, end="")
+    if args.show_coverage and report.coverage:
+        console.print("Coverage inventory:")
+        for entry in report.coverage.get("inventory", []):
+            console.print(f"  {entry['status']}: {entry['path']} — {entry['reason']}")
+
+
+def _rule_brief(
+    args: argparse.Namespace, outcome: CheckOutcome, loaded: LoadedConfig
+) -> RuleBrief | None:
+    """The brief of the one rule the check selects; None for any other selection."""
+    if args.statistics or args.verbose:
+        return None
+    codes: set[str] = set()
+    for selector in _split_selectors(args.select):
+        codes.update(outcome.rules.matching_codes(selector))
+    rule = outcome.rules.lookup(codes.pop()) if len(codes) == 1 else None
+    if rule is None:
+        return None
+    doc = rule.explain()
+    usage = rule_usage(rule)
+    settings = RuleSettings(outcome.rules, loaded)
+    state = settings.status(rule).state
+    severity = next(
+        (level for active, level in outcome.active if active.code == rule.code),
+        rule.default_severity,
+    )
+    return RuleBrief(
+        code=rule.code,
+        name=rule.name,
+        status=f"{severity.value} · {state} in {settings.source}",
+        instruction=doc.canonical,
+        smell=doc.smell or doc.summary,
+        no_smell=doc.no_smell,
+        repair=doc.repair,
+        group_by=doc.group_by,
+        subject=doc.subject,
+        # A rule that is on by default has no entry to add.
+        enable=usage.enable if state == "off" and usage.requires is None else "",
+        requires=(usage.requires or "") if state == "needs policy" else "",
+    )
 
 
 def _split_selectors(raw: str | None) -> tuple[str, ...]:

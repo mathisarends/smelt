@@ -45,4 +45,8 @@ class DeepPackageReexport(Rule):
         ),
         canonical="Re-export through the immediate subpackage's initializer",
         config=("rules",),
+        smell="A package initializer re-exports a name from a module inside a subpackage, bypassing that subpackage's initializer.",
+        no_smell="Guarded or rebound imports, star imports and dynamic export lists are not reported.",
+        repair="Export the names from the immediate subpackage's initializer and import them from that package; repeat at each deeper boundary.",
+        subject="{names} via {package}",
     )
