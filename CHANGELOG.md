@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Opt in to [`idioms/redundant-getattr` (IDM009)](docs/rules/IDM009.md) to
+  report literal `getattr(obj, "name")`, `getattr(obj, "name", default)` and
+  `hasattr(obj, "name")` calls in production code when every project class of
+  the receiver's declared type declares the attribute. Receiver types come from
+  annotations, method receivers, constructors, loop targets and type aliases;
+  `Any`, `object`, type parameters, outside classes, optional receivers and
+  union members without the attribute stay quiet.
 - Define [project rules](docs/project-rules.md) with `Rule` and `calls.to(...)`,
   load their module with `plugins`, and select them by name under `rules`.
   Smelt runs each listed module as Python, so helpers and loops can build rules.
