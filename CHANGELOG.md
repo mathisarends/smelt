@@ -17,6 +17,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 - Enable [`modeling/prefer-error-name` (MOD013)](docs/rules/MOD013.md) to
   name exception classes with an Error suffix and their modules `errors` instead
   of `exceptions`.
+- Opt in to [`complexity/duplicate-parameter-group` (CPX009)](docs/rules/CPX009.md)
+  to report a group of at least 5 parameter names that at least 3 production
+  functions from 2 or more override families share. Each group is reported
+  once, with every location. Overrides, same-name methods, forwarding wrappers
+  and DI providers or classmethod factories that mirror a constructor count as
+  one family.
 - Define [project rules](docs/project-rules.md) with `Rule` and `calls.to(...)`,
   load their module with `plugins`, and select them by name under `rules`.
   Smelt runs each listed module as Python, so helpers and loops can build rules.

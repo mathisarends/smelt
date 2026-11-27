@@ -505,6 +505,7 @@ CPX008 parity/receivers_copy.py:63:13 hint Name the Local instance before callin
 CPX008 parity/receivers_copy.py:67:9 hint Name the Local instance before calling .run()
 CPX008 parity/receivers_copy.py:72:19 hint Name the Local instance before calling .run()
 CPX008 parity/receivers_copy.py:74:18 hint Name the Local instance before calling .run()
+CPX009 parity/loop_collections.py:231:1 hint `a, b, c, d, f, g` travel together through 5 functions in 3 modules; consider a value object such as a dataclass
 FWK001 parity/frameworks_copy.py:16:5 warning review secret settings field Settings.api_key; use a masked secret type
 FWK001 parity/frameworks_copy.py:17:5 warning review secret settings field Settings.database_password; use a masked secret type
 FWK001 parity/frameworks_copy.py:18:5 warning review secret settings field Settings.refresh_token; use a masked secret type

@@ -24,6 +24,7 @@
 | [CPX006](CPX006.md) | complexity/excess-comprehension-loops | complexity | explicit | hint |
 | [CPX007](CPX007.md) | complexity/excess-constructor-decisions | complexity | explicit | hint |
 | [CPX008](CPX008.md) | complexity/inline-constructor-receiver | complexity | explicit | hint |
+| [CPX009](CPX009.md) | complexity/duplicate-parameter-group | complexity | explicit | hint |
 | [FWK001](FWK001.md) | frameworks/prefer-secret-type | frameworks | explicit | warning |
 | [FWK002](FWK002.md) | frameworks/redundant-dishka-provider | frameworks | explicit | hint |
 | [IDM001](IDM001.md) | idioms/bundled-instance-assignment | idioms | explicit | error |
